@@ -61,6 +61,42 @@ body::before {
 
 main, nav, .pick-overlay, .elim-dialog { position: relative; z-index: 1; }
 
+/* ========== PARTICIPANT (READ-ONLY) MODE ========== */
+body.participant-mode .admin-only { display: none !important; }
+body.participant-mode .scoring-grid input,
+body.participant-mode .scoring-grid select { pointer-events: none; opacity: 0.7; }
+body.participant-mode .elim-dialog { display: none !important; }
+
+/* ========== SYNC STATUS BAR ========== */
+.sync-bar {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.75rem; color: var(--text-secondary);
+}
+.sync-bar .sync-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #666; flex-shrink: 0;
+}
+.sync-bar .sync-dot.connected { background: #4CAF50; }
+.sync-bar .sync-dot.syncing { background: #F5C842; animation: pulse 1s infinite; }
+.sync-bar .sync-dot.error { background: #C62828; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.sync-banner {
+  background: linear-gradient(135deg, #1B5E20, #0A140A);
+  border-bottom: 1px solid rgba(245,200,66,0.2);
+  padding: 0.4rem 1rem;
+  display: flex; align-items: center; justify-content: center; gap: 1rem;
+  font-size: 0.8rem; color: var(--text-secondary);
+  position: sticky; top: 0; z-index: 1001;
+}
+.sync-banner.hidden { display: none; }
+.sync-banner .mode-badge {
+  padding: 0.15rem 0.6rem; border-radius: 10px;
+  font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;
+}
+.sync-banner .mode-badge.admin { background: var(--torch-orange); color: #fff; }
+.sync-banner .mode-badge.viewer { background: var(--ocean-blue); color: #fff; }
+
 /* ========== NAV ========== */
 nav {
   background: linear-gradient(135deg, #0A140A 0%, #152015 50%, #1A2A1A 100%);
@@ -1920,21 +1956,31 @@ h3 { font-size: 1.2rem; margin-bottom: 0.8rem; color: var(--torch-gold); }
 </svg>
 </div>
 
+<!-- Sync Status Banner -->
+<div class="sync-banner hidden" id="syncBanner">
+  <span class="mode-badge admin" id="modeBadge">COMMISSIONER</span>
+  <div class="sync-bar">
+    <span class="sync-dot" id="syncDot"></span>
+    <span id="syncStatus">Not connected</span>
+  </div>
+  <button class="btn btn-secondary btn-sm admin-only" onclick="publishToSheet()" id="publishBtn" style="font-size:0.7rem;padding:2px 10px">Publish</button>
+</div>
+
 <nav>
   <div class="logo" style="animation:flicker 3s ease infinite">SURVIVOR 50 <span>Fantasy</span></div>
   <div class="tabs">
-    <div class="tab" data-page="setup">Setup</div>
+    <div class="tab admin-only" data-page="setup">Setup</div>
     <div class="tab" data-page="propbet">Prop Bet</div>
     <div class="tab" data-page="draft">Draft</div>
     <div class="tab active" data-page="leaderboard">Leaderboard</div>
-    <div class="tab" data-page="scoring">Scoring</div>
+    <div class="tab admin-only" data-page="scoring">Scoring</div>
     <div class="tab" data-page="cast">Cast</div>
     <div class="tab" data-page="merge">Merge Draft</div>
   </div>
   <div class="actions">
-    <button class="btn btn-secondary btn-sm" onclick="loadTestData()" title="Load fake data for testing">Test Data</button>
-    <button class="btn btn-secondary btn-sm" onclick="exportData()">Export</button>
-    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('importFile').click()">Import</button>
+    <button class="btn btn-secondary btn-sm admin-only" onclick="loadTestData()" title="Load fake data for testing">Test Data</button>
+    <button class="btn btn-secondary btn-sm admin-only" onclick="exportData()">Export</button>
+    <button class="btn btn-secondary btn-sm admin-only" onclick="document.getElementById('importFile').click()">Import</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
   </div>
 </nav>
@@ -2036,7 +2082,7 @@ h3 { font-size: 1.2rem; margin-bottom: 0.8rem; color: var(--torch-gold); }
   <div class="card">
     <p style="color:var(--text-secondary);margin-bottom:1rem">Everyone picks who they think will be voted out first. Correct guess = <strong style="color:var(--torch-gold)">+5 bonus points</strong>.</p>
     <div class="prop-bet-grid" id="propBetGrid"></div>
-    <div style="margin-top:1.5rem">
+    <div style="margin-top:1.5rem" class="admin-only">
       <label style="font-size:0.85rem;color:var(--text-secondary);margin-right:0.5rem">Who was actually voted out first?</label>
       <select id="actualFirstBoot" onchange="resolveFirstBoot()" style="padding:0.5rem;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:var(--text-primary)">
         <option value="">-- Not yet revealed --</option>
@@ -2049,8 +2095,8 @@ h3 { font-size: 1.2rem; margin-bottom: 0.8rem; color: var(--torch-gold); }
 <div class="page" id="page-draft">
   <div class="draft-controls" style="margin-bottom:0.5rem">
     <h2 style="margin:0">Snake Draft</h2>
-    <button class="btn btn-primary" id="startDraftBtn" onclick="startDraft()">Start Draft</button>
-    <button class="btn btn-danger btn-sm" onclick="undoLastPick()" id="undoBtn" style="display:none">Undo Last Pick</button>
+    <button class="btn btn-primary admin-only" id="startDraftBtn" onclick="startDraft()">Start Draft</button>
+    <button class="btn btn-danger btn-sm admin-only" onclick="undoLastPick()" id="undoBtn" style="display:none">Undo Last Pick</button>
     <button class="btn btn-secondary btn-sm" onclick="document.getElementById('draftResultsWrap').style.display = document.getElementById('draftResultsWrap').style.display === 'none' ? '' : 'none'">Toggle Results Table</button>
   </div>
 
@@ -2093,10 +2139,10 @@ h3 { font-size: 1.2rem; margin-bottom: 0.8rem; color: var(--torch-gold); }
     <div class="power-rankings-header">
       <h3>Power Rankings</h3>
       <span class="power-rankings-ep" id="powerRankingsEp"></span>
-      <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:0.65rem;padding:2px 8px" onclick="togglePowerRankingsEdit()">Edit</button>
+      <button class="btn btn-secondary btn-sm admin-only" style="margin-left:auto;font-size:0.65rem;padding:2px 8px" onclick="togglePowerRankingsEdit()">Edit</button>
     </div>
     <div class="power-rankings-body" id="powerRankingsBody"></div>
-    <div class="power-rankings-edit" id="powerRankingsEditArea" style="display:none">
+    <div class="power-rankings-edit admin-only" id="powerRankingsEditArea" style="display:none">
       <textarea id="powerRankingsTextarea" placeholder="Write your weekly power rankings, hot takes, and analysis here..."></textarea>
       <button class="btn btn-primary btn-sm" style="margin-top:0.3rem;font-size:0.7rem" onclick="savePowerRankings()">Save</button>
     </div>
@@ -2155,7 +2201,7 @@ h3 { font-size: 1.2rem; margin-bottom: 0.8rem; color: var(--torch-gold); }
         <tbody></tbody>
       </table>
     </div>
-    <div style="margin-top:1rem; display:flex; gap:0.5rem">
+    <div style="margin-top:1rem; display:flex; gap:0.5rem" class="admin-only">
       <button class="btn btn-primary" onclick="saveEpisodeScoring()">Save Episode Scores</button>
     </div>
   </div>
@@ -2179,8 +2225,8 @@ h3 { font-size: 1.2rem; margin-bottom: 0.8rem; color: var(--torch-gold); }
   <div class="card">
     <div class="draft-controls">
       <div class="draft-status" id="mergeStatus">Merge draft not started</div>
-      <button class="btn btn-primary" id="startMergeBtn" onclick="startMergeDraft()">Start Merge Draft</button>
-      <button class="btn btn-danger btn-sm" onclick="undoMergePick()" id="undoMergeBtn" style="display:none">Undo</button>
+      <button class="btn btn-primary admin-only" id="startMergeBtn" onclick="startMergeDraft()">Start Merge Draft</button>
+      <button class="btn btn-danger btn-sm admin-only" onclick="undoMergePick()" id="undoMergeBtn" style="display:none">Undo</button>
     </div>
     <div class="draft-order-display" id="mergeDraftOrder"></div>
   </div>
@@ -2228,6 +2274,17 @@ h3 { font-size: 1.2rem; margin-bottom: 0.8rem; color: var(--torch-gold); }
 </main>
 
 <script>
+// ===================== CONFIG =====================
+// Paste your Google Apps Script Web App URL here after deploying.
+// See google-apps-script.js for setup instructions.
+const SHEET_API_URL = '';  // e.g. 'https://script.google.com/macros/s/XXXXX/exec'
+
+// ===================== MODE DETECTION =====================
+const urlParams = new URLSearchParams(window.location.search);
+const IS_ADMIN = urlParams.get('mode') === 'admin';
+const AUTO_REFRESH_INTERVAL = 60000; // participants auto-refresh every 60s
+let _refreshTimer = null;
+
 // ===================== DATA MODEL =====================
 const PLAYER_COLORS = [
   '#E8751A', '#4CAF50', '#2196F3', '#9C27B0', '#FF5722',
@@ -2315,6 +2372,7 @@ function init() {
   }
   renderAll();
   setupNav();
+  setupMode();
 }
 
 function setupNav() {
@@ -2348,13 +2406,25 @@ function renderAll() {
 // ===================== STATE PERSISTENCE =====================
 function saveState() {
   try {
-    const data = JSON.stringify(state);
-    // Save to a downloadable format - state is preserved in memory during session
+    // Strip base64 photos to keep localStorage manageable
+    const toSave = JSON.parse(JSON.stringify(state));
+    toSave.castaways.forEach(c => { delete c.photo; });
+    localStorage.setItem('survivor50_state', JSON.stringify(toSave));
   } catch(e) {}
 }
 
 function loadState() {
-  // State loads from imported JSON files
+  try {
+    const saved = localStorage.getItem('survivor50_state');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      Object.assign(state, parsed);
+      // Restore castaway photos from defaults (photos aren't saved to keep storage small)
+      state.castaways.forEach((c, i) => {
+        if (DEFAULT_CASTAWAYS[i]) c.photo = DEFAULT_CASTAWAYS[i].photo;
+      });
+    }
+  } catch(e) {}
 }
 
 function exportData() {
@@ -2375,6 +2445,7 @@ function importData(event) {
     try {
       state = JSON.parse(e.target.result);
       renderAll();
+      saveState();
       alert('Data imported successfully!');
     } catch(err) {
       alert('Error importing data: ' + err.message);
@@ -2382,6 +2453,108 @@ function importData(event) {
   };
   reader.readAsText(file);
   event.target.value = '';
+}
+
+// ===================== GOOGLE SHEET SYNC =====================
+function setSyncStatus(status, text) {
+  const dot = document.getElementById('syncDot');
+  const label = document.getElementById('syncStatus');
+  if (!dot || !label) return;
+  dot.className = 'sync-dot ' + status;
+  label.textContent = text;
+}
+
+// Strip base64 photos before sending to Sheet (too large)
+function stateForSheet() {
+  const copy = JSON.parse(JSON.stringify(state));
+  copy.castaways.forEach(c => { delete c.photo; });
+  return copy;
+}
+
+// Restore photos after loading from Sheet
+function restorePhotos() {
+  state.castaways.forEach((c, i) => {
+    if (DEFAULT_CASTAWAYS[i]) c.photo = DEFAULT_CASTAWAYS[i].photo;
+  });
+}
+
+async function publishToSheet() {
+  if (!SHEET_API_URL) {
+    alert('Set SHEET_API_URL in the script to enable Google Sheet sync.\nSee google-apps-script.js for instructions.');
+    return;
+  }
+  setSyncStatus('syncing', 'Publishing...');
+  try {
+    const resp = await fetch(SHEET_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ state: stateForSheet() })
+    });
+    const data = await resp.json();
+    if (data.success) {
+      setSyncStatus('connected', 'Published ' + new Date().toLocaleTimeString());
+    } else {
+      setSyncStatus('error', 'Publish failed: ' + (data.error || 'unknown'));
+    }
+  } catch(err) {
+    setSyncStatus('error', 'Publish error: ' + err.message);
+  }
+}
+
+async function fetchFromSheet() {
+  if (!SHEET_API_URL) return false;
+  setSyncStatus('syncing', 'Loading...');
+  try {
+    const resp = await fetch(SHEET_API_URL);
+    const data = await resp.json();
+    if (data.success && data.state) {
+      const parsed = typeof data.state === 'string' ? JSON.parse(data.state) : data.state;
+      // Only apply if we got real data
+      if (parsed && parsed.players && parsed.players.length > 0) {
+        Object.assign(state, parsed);
+        restorePhotos();
+        renderAll();
+        const when = data.lastUpdated ? new Date(data.lastUpdated).toLocaleTimeString() : 'just now';
+        setSyncStatus('connected', 'Updated ' + when);
+        return true;
+      }
+    }
+    setSyncStatus('error', 'No data on sheet yet');
+    return false;
+  } catch(err) {
+    setSyncStatus('error', 'Load error: ' + err.message);
+    return false;
+  }
+}
+
+// ===================== MODE SETUP =====================
+function setupMode() {
+  const banner = document.getElementById('syncBanner');
+  const badge = document.getElementById('modeBadge');
+
+  if (SHEET_API_URL) {
+    banner.classList.remove('hidden');
+  }
+
+  if (IS_ADMIN) {
+    document.body.classList.remove('participant-mode');
+    badge.textContent = 'COMMISSIONER';
+    badge.className = 'mode-badge admin';
+    if (SHEET_API_URL) {
+      banner.classList.remove('hidden');
+      setSyncStatus('connected', 'Ready to publish');
+    }
+  } else {
+    document.body.classList.add('participant-mode');
+    badge.textContent = 'VIEWER';
+    badge.className = 'mode-badge viewer';
+    if (SHEET_API_URL) {
+      banner.classList.remove('hidden');
+      // Fetch from sheet immediately, then auto-refresh
+      fetchFromSheet();
+      _refreshTimer = setInterval(fetchFromSheet, AUTO_REFRESH_INTERVAL);
+    }
+  }
 }
 
 // ===================== SETUP =====================
@@ -2402,22 +2575,25 @@ function addPlayer() {
   const idx = state.players.length;
   state.players.push({ name: 'Player ' + (idx + 1), color: PLAYER_COLORS[idx % PLAYER_COLORS.length] });
   renderPlayerList();
+  saveState();
 }
 
 function removePlayer(i) {
   if (state.players.length <= 2) return alert('Need at least 2 players');
   state.players.splice(i, 1);
   renderPlayerList();
+  saveState();
 }
 
-function updatePlayerName(i, name) { state.players[i].name = name; }
-function updatePlayerColor(i, color) { state.players[i].color = color; }
+function updatePlayerName(i, name) { state.players[i].name = name; saveState(); }
+function updatePlayerColor(i, color) { state.players[i].color = color; saveState(); }
 
 function saveDraftSettings() {
   state.settings.draftRounds = parseInt(document.getElementById('draftRounds').value);
   state.settings.maxPicks = parseInt(document.getElementById('maxPicks').value);
   state.settings.mergeTrigger = parseInt(document.getElementById('mergeTrigger').value);
   state.settings.scoringStartEp = parseInt(document.getElementById('scoringStartEp').value);
+  saveState();
   alert('Settings saved!');
 }
 
@@ -2430,6 +2606,7 @@ function randomizeDraftOrder() {
   state.draftOrder = indices;
   renderDraftOrderPreview();
   renderDraft();
+  saveState();
 }
 
 function renderDraftOrderPreview() {
@@ -2463,7 +2640,7 @@ function renderPropBet() {
     return `
       <div class="prop-bet-card" style="border-left:4px solid ${p.color}">
         <div class="player-name" style="color:${p.color}">${p.name}</div>
-        <select onchange="setPropBet(${i}, this.value)">
+        <select onchange="setPropBet(${i}, this.value)" ${!IS_ADMIN ? 'disabled' : ''}>
           <option value="">-- Pick --</option>
           ${state.castaways.map(c => `<option value="${c.id}" ${pick == c.id ? 'selected' : ''}>${c.shortName}</option>`).join('')}
         </select>
@@ -2479,6 +2656,7 @@ function renderPropBet() {
 
 function setPropBet(playerIdx, castawayId) {
   state.propBets[playerIdx] = castawayId;
+  saveState();
 }
 
 function resolveFirstBoot() {
@@ -2486,6 +2664,7 @@ function resolveFirstBoot() {
   state.actualFirstBoot = val ? parseInt(val) : null;
   renderPropBet();
   renderLeaderboard();
+  saveState();
 }
 
 function getFirstBootResult(playerIdx) {
@@ -2520,6 +2699,7 @@ function startDraft() {
   state.draftPicks = [];
   state.castaways.forEach(c => { c.pickedBy = []; });
   renderDraft();
+  saveState();
 }
 
 function renderDraft() {
@@ -2628,7 +2808,7 @@ function renderDraft() {
         return `<div class="pick-drafted-badge" style="background:${p.color}">${p.name}</div>`;
       }).join('');
 
-      return `<button class="draft-pick-btn${animClass}" ${disabled ? 'disabled' : ''} onclick="makeDraftPick(${c.id})" data-castaway-id="${c.id}">
+      return `<button class="draft-pick-btn${animClass}" ${disabled || !IS_ADMIN ? 'disabled' : ''} onclick="makeDraftPick(${c.id})" data-castaway-id="${c.id}">
         ${photoHtml}
         ${initialsHtml}
         ${badges ? `<div class="pick-drafted-badges">${badges}</div>` : ''}
@@ -2865,6 +3045,7 @@ function makeDraftPick(castawayId) {
   // Show pick announcement
   showPickOverlay(currentPick + 1, state.players[slot.playerIdx], castaway);
   renderDraft();
+  saveState();
 }
 
 function showPickOverlay(pickNum, player, castaway) {
@@ -2921,6 +3102,7 @@ function undoLastPick() {
   if (idx !== -1) castaway.pickedBy.splice(idx, 1);
   state.draftComplete = false;
   renderDraft();
+  saveState();
 }
 
 // ===================== LEADERBOARD =====================
@@ -3132,6 +3314,7 @@ function updateScore(ep, castawayId, key, value) {
   if (!state.episodes[ep]) state.episodes[ep] = {};
   if (!state.episodes[ep][castawayId]) state.episodes[ep][castawayId] = {};
   state.episodes[ep][castawayId][key] = value;
+  saveState();
 }
 
 function saveEpisodeScoring() {
@@ -3147,6 +3330,7 @@ function saveEpisodeScoring() {
     }
   });
 
+  saveState();
   // Show elimination dialog
   showEliminationDialog(ep);
 }
@@ -3190,6 +3374,7 @@ function closeElimDialog(confirm) {
   }
   document.getElementById('elimDialog').classList.remove('show');
   renderAll();
+  saveState();
 }
 
 // ===================== CAST PAGE =====================
@@ -3250,6 +3435,7 @@ function startMergeDraft() {
   state.mergeDraftStarted = true;
   state.mergePicks = [];
   renderMergeDraft();
+  saveState();
 }
 
 function renderMergeDraft() {
@@ -3297,7 +3483,7 @@ function renderMergeDraft() {
         ? `<img class="pick-photo" src="${c.photo}" alt="${c.shortName}" onerror="this.nextElementSibling.style.display='flex';this.style.display='none'">`
         : '';
       const initialsHtml = `<div class="pick-initials-bg" style="${c.photo ? 'display:none' : ''}">${c.initials}</div>`;
-      return `<button class="draft-pick-btn" onclick="makeMergePick(${c.id})">
+      return `<button class="draft-pick-btn" ${!IS_ADMIN ? 'disabled' : ''} onclick="makeMergePick(${c.id})">
         ${photoHtml}
         ${initialsHtml}
         <div class="pick-label">
@@ -3333,6 +3519,7 @@ function makeMergePick(castawayId) {
   state.mergePicks.push({ playerIdx, castawayId });
 
   renderMergeDraft();
+  saveState();
 }
 
 function undoMergePick() {
@@ -3345,6 +3532,7 @@ function undoMergePick() {
   }
   state.mergeDraftComplete = false;
   renderMergeDraft();
+  saveState();
 }
 
 // ===================== BUMP CHART =====================
@@ -3611,6 +3799,7 @@ function loadTestData() {
 
   state.currentEpisode = 6;
   renderAll();
+  saveState();
 }
 
 // ===================== EPISODE HIGHLIGHTS =====================
@@ -3760,6 +3949,7 @@ function savePowerRankings() {
   }
   document.getElementById('powerRankingsEditArea').style.display = 'none';
   renderPowerRankings();
+  saveState();
 }
 
 // ===================== SEASON TIMELINE (Swimlane) =====================
