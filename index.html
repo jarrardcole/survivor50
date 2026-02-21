@@ -1,0 +1,4122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Survivor 50 Fantasy Draft</title>
+<style>
+:root {
+  --torch-orange: #E8751A;
+  --torch-gold: #F5C842;
+  --jungle-green: #2E7D32;
+  --deep-green: #1B5E20;
+  --ocean-blue: #0277BD;
+  --tribal-red: #C62828;
+  --sand: #F5E6CA;
+  --parchment: #D4A96A;
+  --dark-bg: #0C1A0C;
+  --card-bg: #152015;
+  --panel-bg: #1A2E1A;
+  --text-primary: #F5E6CA;
+  --text-secondary: #A0936E;
+  --eliminated: #3A1515;
+  --vatu-purple: #8B5CF6;
+  --kalo-teal: #14B8A6;
+  --cila-orange: #F97316;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--dark-bg);
+  background-image:
+    radial-gradient(ellipse at 15% 85%, rgba(30,80,30,0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 15%, rgba(232,117,26,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(27,94,32,0.12) 0%, transparent 70%);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* Brooklyn street map background overlay */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 1;
+  background-color: transparent;
+}
+
+.bk-map-bg {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+main, nav, .pick-overlay, .elim-dialog { position: relative; z-index: 1; }
+
+/* ========== NAV ========== */
+nav {
+  background: linear-gradient(135deg, #0A140A 0%, #152015 50%, #1A2A1A 100%);
+  border-bottom: 3px solid var(--torch-orange);
+  box-shadow: 0 2px 20px rgba(232,117,26,0.15), 0 0 60px rgba(232,117,26,0.05);
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+nav .logo {
+  font-size: 1.4rem;
+  font-weight: 800;
+  padding: 0.8rem 0;
+  background: linear-gradient(90deg, var(--torch-orange), var(--torch-gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+nav .logo span { font-weight: 400; opacity: 0.8; }
+
+nav .tabs {
+  display: flex;
+  gap: 0;
+}
+
+nav .tab {
+  padding: 0.8rem 1.2rem;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+nav .tab:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+nav .tab.active { color: var(--torch-orange); border-bottom-color: var(--torch-orange); }
+
+nav .actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.btn-primary { background: linear-gradient(135deg, var(--torch-orange), #D4690F); color: #fff; box-shadow: 0 2px 12px rgba(232,117,26,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+.btn-primary:hover { background: linear-gradient(135deg, #D4690F, var(--torch-orange)); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(232,117,26,0.4); }
+.btn-secondary { background: rgba(245,230,202,0.08); color: var(--text-primary); border: 1px solid rgba(245,230,202,0.15); }
+.btn-secondary:hover { background: rgba(245,230,202,0.15); }
+.btn-danger { background: linear-gradient(135deg, var(--tribal-red), #A01010); color: #fff; }
+.btn-danger:hover { background: linear-gradient(135deg, #A01010, var(--tribal-red)); }
+.btn-sm { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+
+/* ========== MAIN CONTENT ========== */
+main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+/* Draft page goes full-width for TV display */
+#page-draft {
+  max-width: 100vw;
+  margin: 0 -1.5rem;
+  padding: 0 1rem;
+}
+
+#page-draft .draft-tv-layout {
+  max-width: none;
+}
+
+/* Also make merge draft full-width */
+#page-merge {
+  max-width: 100vw;
+  margin: 0 -1.5rem;
+  padding: 0 1rem;
+}
+
+.page { display: none; }
+.page.active { display: block; }
+
+h2 {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(90deg, var(--torch-orange), var(--torch-gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+h3 { font-size: 1.2rem; margin-bottom: 0.8rem; color: var(--torch-gold); }
+
+.card {
+  background: linear-gradient(145deg, var(--card-bg) 0%, #1A2A18 100%);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(245,200,66,0.08);
+  box-shadow: 0 2px 15px rgba(0,0,0,0.3);
+}
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+
+/* ========== SETUP PAGE ========== */
+.setup-section { margin-bottom: 2rem; }
+
+.player-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.player-input-row input {
+  flex: 1;
+  padding: 0.5rem 0.8rem;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.player-input-row input:focus {
+  outline: none;
+  border-color: var(--torch-orange);
+}
+
+.player-color-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.3);
+  cursor: pointer;
+}
+
+.remove-player {
+  background: none;
+  border: none;
+  color: var(--tribal-red);
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0.2rem 0.5rem;
+}
+
+/* ========== CASTAWAY CARDS ========== */
+.castaway-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.8rem;
+}
+
+.castaway-card {
+  background: var(--panel-bg);
+  border-radius: 10px;
+  padding: 0.8rem;
+  text-align: center;
+  border: 2px solid transparent;
+  transition: all 0.3s;
+  cursor: default;
+  position: relative;
+}
+
+.castaway-card.available { border-color: rgba(245,200,66,0.15); }
+.castaway-card.picked-once { border-color: var(--torch-gold); box-shadow: 0 0 10px rgba(245,200,66,0.15); }
+.castaway-card.picked-twice { border-color: var(--tribal-red); opacity: 0.55; }
+.castaway-card.eliminated { border-color: var(--eliminated); opacity: 0.4; }
+
+.castaway-card .avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--torch-orange), var(--torch-gold));
+  margin: 0 auto 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  overflow: hidden;
+  border: 3px solid rgba(255,255,255,0.15);
+}
+
+.castaway-card .avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.castaway-card.eliminated .avatar {
+  filter: grayscale(100%);
+  border-color: var(--tribal-red);
+}
+
+.castaway-card.picked-once .avatar { border-color: var(--torch-gold); }
+.castaway-card.picked-twice .avatar { border-color: var(--tribal-red); }
+
+.castaway-card .name {
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-bottom: 0.2rem;
+}
+
+.castaway-card .season-info {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.castaway-card .pick-badges {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-top: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.pick-badge {
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.castaway-card .points-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--torch-orange);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.status-badge {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  display: inline-block;
+  margin-top: 0.3rem;
+}
+
+.status-active { background: var(--jungle-green); color: #fff; }
+.status-eliminated { background: var(--tribal-red); color: #fff; }
+.status-merged { background: var(--ocean-blue); color: #fff; }
+
+/* ========== DRAFT BOARD ========== */
+.draft-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.draft-status {
+  font-size: 1.1rem;
+  padding: 0.5rem 1rem;
+  background: var(--panel-bg);
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+/* TV-optimized draft layout — viewport-locked, NO scroll */
+.draft-tv-layout {
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  gap: 0.5rem;
+  height: calc(100vh - 90px);
+  width: 100%;
+  overflow: hidden;
+}
+
+.draft-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  overflow: hidden;
+}
+
+.draft-current-pick {
+  background: linear-gradient(145deg, #1A2A1A 0%, #0F1F0F 100%);
+  border-radius: 10px;
+  padding: 0.8rem;
+  text-align: center;
+  border: 3px solid var(--torch-orange);
+  animation: fireGlow 2s ease infinite;
+  flex-shrink: 0;
+}
+
+.draft-current-pick .on-the-clock {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: var(--torch-gold);
+  margin-bottom: 0.2rem;
+}
+
+.draft-current-pick .current-player-name {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin-bottom: 0.1rem;
+}
+
+.draft-current-pick .pick-info {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.draft-order-display {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.draft-order-slot {
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.4;
+  transition: all 0.3s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.draft-order-slot.current {
+  opacity: 1;
+  transform: scale(1.03);
+  box-shadow: 0 0 12px rgba(232,117,26,0.5);
+}
+
+.draft-order-slot.done {
+  opacity: 0.35;
+}
+
+.draft-order-slot .slot-pick-name {
+  font-size: 0.65rem;
+  opacity: 0.8;
+}
+
+/*
+ * TV-sized pick grid — portrait cards, auto-fit to viewport.
+ * 24 castaways: 8 columns × 3 rows fits most TVs.
+ * Cards fill available height with no scroll.
+ */
+.draft-pick-area {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 5px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.draft-pick-btn {
+  position: relative;
+  background: var(--panel-bg);
+  border: 2px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 0;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 0;
+  min-width: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Photo fills entire card as background */
+.draft-pick-btn .pick-photo {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+  transition: all 0.25s;
+}
+
+/* Gradient overlay at bottom for text readability */
+.draft-pick-btn .pick-label {
+  position: relative;
+  z-index: 2;
+  background: linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.65) 60%, rgba(0,0,0,0) 100%);
+  padding: 1.5rem 0.4rem 0.35rem;
+  width: 100%;
+}
+
+.draft-pick-btn .pick-name {
+  font-weight: 800;
+  font-size: 0.85rem;
+  line-height: 1.1;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+}
+
+.draft-pick-btn .pick-count {
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.55);
+  margin-top: 1px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+.draft-pick-btn .pick-count.picked-once { color: var(--torch-gold); }
+.draft-pick-btn .pick-count.picked-max { color: #ff6b6b; }
+
+/* Initials fallback when no photo */
+.draft-pick-btn .pick-initials-bg {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--panel-bg) 0%, #1a2a50 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 900;
+  color: rgba(255,255,255,0.15);
+}
+
+/* Hover — glow + slight zoom on photo */
+.draft-pick-btn:hover:not(:disabled) {
+  border-color: var(--torch-orange);
+  z-index: 10;
+  box-shadow: 0 4px 20px rgba(232,117,26,0.5), 0 0 30px rgba(245,200,66,0.15);
+}
+
+.draft-pick-btn:hover:not(:disabled) .pick-photo {
+  transform: scale(1.08);
+}
+
+/* Disabled — greyscale + dim */
+.draft-pick-btn:disabled {
+  cursor: not-allowed;
+  border-color: rgba(183,28,28,0.3);
+}
+
+.draft-pick-btn:disabled .pick-photo {
+  filter: grayscale(100%) brightness(0.35);
+}
+
+.draft-pick-btn:disabled .pick-label {
+  opacity: 0.45;
+}
+
+/* Off-the-board cards shrink slightly */
+.draft-pick-btn.off-the-board {
+  transform: scale(0.88);
+  opacity: 0.5;
+  border-color: rgba(100,100,100,0.2);
+}
+
+.draft-pick-btn.off-the-board .pick-photo {
+  filter: grayscale(100%) brightness(0.3);
+}
+
+/* Smooth card reorder animation */
+@keyframes cardSlideToEnd {
+  0% { transform: scale(1); opacity: 1; }
+  30% { transform: scale(0.7) rotate(-3deg); opacity: 0.6; }
+  60% { transform: scale(0.7) translateX(20px); opacity: 0.5; }
+  100% { transform: scale(0.88); opacity: 0.5; }
+}
+
+.draft-pick-btn.just-removed {
+  animation: cardSlideToEnd 0.7s ease forwards;
+}
+
+/* "Picked by" badges overlaid on the card */
+.draft-pick-btn .pick-drafted-badges {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-end;
+}
+
+.draft-pick-btn .pick-drafted-badge {
+  font-size: 0.55rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  white-space: nowrap;
+}
+
+/* Pick announcement - big portrait for TV */
+.pick-overlay .pick-castaway-photo {
+  width: 220px;
+  height: 300px;
+  border-radius: 12px;
+  object-fit: cover;
+  object-position: center 20%;
+  border: 5px solid var(--torch-gold);
+  margin-bottom: 1rem;
+  animation: draftPick 0.5s ease;
+  box-shadow: 0 0 60px rgba(245,200,66,0.4);
+  background: #111;
+  filter: none;
+  mix-blend-mode: normal;
+  isolation: isolate;
+}
+
+@media (max-width: 900px) {
+  .draft-tv-layout { grid-template-columns: 1fr; height: auto; overflow: auto; }
+  .draft-sidebar { flex-direction: row; flex-wrap: wrap; }
+  .draft-order-display { flex-direction: row; flex-wrap: wrap; max-height: none; }
+  .draft-pick-area { grid-template-columns: repeat(4, 1fr); grid-template-rows: auto; height: auto; }
+}
+
+@media (min-width: 1800px) {
+  .draft-pick-btn .pick-name { font-size: 1rem; }
+  .draft-pick-btn .pick-count { font-size: 0.7rem; }
+}
+
+/* ===== Post-Draft Tribes Reveal ===== */
+.tribes-reveal {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 0.5rem;
+}
+
+.tribes-reveal-header-section {
+  text-align: center;
+  margin-bottom: 0.6rem;
+  flex-shrink: 0;
+}
+
+.tribes-reveal-title {
+  font-size: 1.6rem;
+  font-weight: 900;
+  background: linear-gradient(90deg, var(--torch-orange), var(--torch-gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+}
+
+.tribes-reveal-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.tribes-reveal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.6rem;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+@keyframes tribeCardReveal {
+  0% { transform: translateY(30px) scale(0.9); opacity: 0; }
+  60% { transform: translateY(-5px) scale(1.02); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.tribe-reveal-card {
+  background: linear-gradient(180deg, var(--card-bg) 0%, #0F1A0F 100%);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid var(--tribe-color);
+  animation: tribeCardReveal 0.5s ease both;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.tribe-card-header {
+  padding: 0.5rem 0.6rem;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.tribe-card-name {
+  font-weight: 900;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.tribe-card-meta {
+  font-size: 0.6rem;
+  opacity: 0.85;
+  margin-top: 1px;
+}
+
+.tribe-card-members {
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tribe-card-member {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(245,230,202,0.04);
+  border-radius: 6px;
+  padding: 0.25rem 0.35rem;
+}
+
+.member-photo-wrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid rgba(245,200,66,0.2);
+}
+
+.member-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+}
+
+.member-initials {
+  width: 100%;
+  height: 100%;
+  background: var(--panel-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.7rem;
+  color: rgba(245,230,202,0.3);
+}
+
+.member-info {
+  min-width: 0;
+}
+
+.member-name {
+  font-weight: 700;
+  font-size: 0.8rem;
+  line-height: 1.1;
+}
+
+.member-seasons {
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+}
+
+/* Draft Analysis / Superlatives */
+.draft-analysis {
+  margin-top: 0.8rem;
+  flex-shrink: 0;
+}
+
+.analysis-title {
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--torch-gold);
+  margin-bottom: 0.5rem;
+}
+
+.analysis-cards {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+@keyframes analysisReveal {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.analysis-card {
+  background: linear-gradient(145deg, var(--card-bg) 0%, #1A2A18 100%);
+  border: 1px solid rgba(245,200,66,0.12);
+  border-radius: 10px;
+  padding: 0.6rem 0.8rem;
+  text-align: center;
+  min-width: 140px;
+  flex: 1;
+  max-width: 200px;
+  animation: analysisReveal 0.4s ease both;
+}
+
+.analysis-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.analysis-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  margin-bottom: 0.15rem;
+}
+
+.analysis-winner {
+  font-weight: 900;
+  font-size: 0.9rem;
+}
+
+.analysis-detail {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  margin-top: 0.1rem;
+}
+
+.draft-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.draft-results-table th, .draft-results-table td {
+  padding: 0.5rem 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.85rem;
+}
+
+.draft-results-table th {
+  color: var(--torch-gold);
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ========== LEADERBOARD ========== */
+.lb-split {
+  display: flex;
+  gap: 1.2rem;
+  align-items: flex-start;
+}
+
+.lb-split-standings {
+  flex: 1;
+  min-width: 0;
+}
+
+.lb-split-highlights {
+  width: 280px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 60px;
+}
+
+@media (max-width: 800px) {
+  .lb-split {
+    flex-direction: column;
+  }
+  .lb-split-highlights {
+    width: 100%;
+    position: static;
+    order: 1;
+  }
+  .lb-split-standings {
+    width: 100%;
+    flex: none;
+    order: 0;
+  }
+}
+
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0.4rem;
+  border-radius: 8px;
+  background: var(--card-bg);
+  border-left: 4px solid;
+  transition: all 0.3s;
+  gap: 0.6rem;
+}
+
+.leaderboard-row:hover { transform: translateX(4px); background: rgba(245,200,66,0.04); }
+
+.leaderboard-row .rank {
+  font-size: 1.3rem;
+  font-weight: 900;
+  width: 32px;
+  text-align: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.leaderboard-row .rank.first { color: var(--torch-gold); }
+
+.leaderboard-row .player-info { flex: 1; min-width: 0; }
+
+.leaderboard-row .player-name-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.leaderboard-row .player-name { font-size: 0.95rem; font-weight: 700; }
+.leaderboard-row .player-castaways {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.15rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.castaway-pill {
+  background: rgba(245,230,202,0.06);
+  padding: 1px 6px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  display: inline-block;
+}
+
+.castaway-pill:hover {
+  background: rgba(245,200,66,0.15);
+  color: var(--torch-gold);
+}
+
+.castaway-pill.elim {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.castaway-pill.pill-sm {
+  font-size: 0.7rem;
+  padding: 0px 5px;
+}
+
+.leaderboard-row .score {
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1;
+  margin-left: auto;
+}
+
+.leaderboard-row .win-prob {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: rgba(245,200,66,0.08);
+  border: 1px solid rgba(245,200,66,0.12);
+  margin-left: 6px;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  position: relative;
+  top: -1px;
+}
+
+.leaderboard-row .trend {
+  font-size: 1rem;
+  width: 30px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* Castaway HUD tooltip */
+.castaway-hud {
+  position: fixed;
+  z-index: 5000;
+  background: linear-gradient(145deg, #1A2E1A 0%, #0F1A0F 100%);
+  border: 1px solid rgba(245,200,66,0.2);
+  border-radius: 10px;
+  padding: 0;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 20px rgba(232,117,26,0.1);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  width: 240px;
+  overflow: hidden;
+}
+
+.castaway-hud.visible { opacity: 1; }
+
+.castaway-hud-photo {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  object-position: center 20%;
+  display: block;
+}
+
+.castaway-hud-body {
+  padding: 0.6rem 0.7rem;
+}
+
+.castaway-hud-name {
+  font-weight: 900;
+  font-size: 1rem;
+  color: var(--torch-gold);
+}
+
+.castaway-hud-season {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.4rem;
+}
+
+.castaway-hud-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem;
+}
+
+.castaway-hud-stat {
+  font-size: 0.7rem;
+}
+
+.castaway-hud-stat .stat-label {
+  color: var(--text-secondary);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.castaway-hud-stat .stat-value {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.castaway-hud-drafted {
+  margin-top: 0.35rem;
+  display: flex;
+  gap: 0.2rem;
+  flex-wrap: wrap;
+}
+
+.castaway-hud-drafted .hud-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #fff;
+}
+
+.castaway-hud-tribe {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+}
+
+.trend-up { color: #4caf50; }
+.trend-down { color: #f44336; }
+.trend-same { color: var(--text-secondary); }
+
+/* ========== SCORING PAGE ========== */
+.scoring-episode-select {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.ep-btn {
+  padding: 0.4rem 0.8rem;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.ep-btn:hover { border-color: var(--torch-orange); color: var(--text-primary); }
+.ep-btn.active { background: var(--torch-orange); color: #fff; border-color: var(--torch-orange); }
+.ep-btn.has-data { border-color: var(--jungle-green); }
+
+.scoring-grid {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.scoring-grid th {
+  padding: 0.6rem 0.4rem;
+  font-size: 0.7rem;
+  color: var(--torch-gold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+  border-bottom: 2px solid var(--torch-orange);
+  white-space: nowrap;
+}
+
+.scoring-grid td {
+  padding: 0.4rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 0.85rem;
+}
+
+.scoring-grid td:first-child {
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.scoring-grid tr.eliminated-row { opacity: 0.4; }
+
+.scoring-grid input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--torch-orange);
+}
+
+.scoring-grid .ep-total {
+  font-weight: 800;
+  color: var(--torch-gold);
+  font-size: 1rem;
+}
+
+/* ========== PROP BET ========== */
+.prop-bet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.8rem;
+}
+
+.prop-bet-card {
+  background: var(--panel-bg);
+  border-radius: 10px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.prop-bet-card .player-name {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.prop-bet-card select {
+  width: 100%;
+  padding: 0.5rem;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.prop-bet-card select option { background: var(--dark-bg); }
+
+.prop-bet-result {
+  margin-top: 0.5rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.prop-bet-correct { color: #4caf50; }
+.prop-bet-wrong { color: var(--tribal-red); }
+
+/* ========== MERGE DRAFT ========== */
+.merge-info {
+  background: var(--panel-bg);
+  border-left: 4px solid var(--ocean-blue);
+  padding: 1rem;
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 1rem;
+}
+
+/* ========== MODALS ========== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.show { display: flex; }
+
+.modal {
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 500px;
+  width: 90%;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.modal h3 { margin-bottom: 1rem; }
+
+.modal .form-group {
+  margin-bottom: 1rem;
+}
+
+.modal label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.3rem;
+}
+
+.modal input, .modal select {
+  width: 100%;
+  padding: 0.5rem;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+/* ========== ANIMATIONS ========== */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; text-shadow: 0 0 10px #e8751a, 0 0 20px #f5c842; }
+  50% { opacity: 0.9; text-shadow: 0 0 15px #e8751a, 0 0 30px #f5c842, 0 0 40px #e8751a; }
+}
+
+@keyframes fireGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(232,117,26,0.3), 0 0 40px rgba(245,200,66,0.08); }
+  50% { box-shadow: 0 0 40px rgba(232,117,26,0.6), 0 0 60px rgba(245,200,66,0.2), 0 0 80px rgba(232,117,26,0.1); }
+}
+
+@keyframes confetti {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-200px) rotate(720deg); opacity: 0; }
+}
+
+@keyframes draftPick {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pointsCount {
+  from { transform: scale(1.5); color: var(--torch-gold); }
+  to { transform: scale(1); }
+}
+
+.animate-in { animation: slideIn 0.3s ease; }
+.pulse { animation: pulse 1s ease infinite; }
+.fire-glow { animation: fireGlow 2s ease infinite; }
+
+/* ========== PICK ANNOUNCEMENT OVERLAY ========== */
+.pick-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at center, #0c1a0c 0%, #000 100%);
+  z-index: 3000;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pick-overlay.show {
+  display: flex;
+  animation: slideIn 0.3s ease;
+}
+
+.pick-overlay .pick-text {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+}
+
+.pick-overlay .pick-player {
+  font-size: 2.5rem;
+  font-weight: 900;
+  margin-bottom: 0.5rem;
+}
+
+.pick-overlay .pick-selects {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.3rem;
+}
+
+.pick-overlay .pick-castaway {
+  font-size: 3.5rem;
+  font-weight: 900;
+  background: linear-gradient(90deg, var(--torch-orange), var(--torch-gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: draftPick 0.5s ease;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.pick-overlay .pick-tribe-context {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 600px;
+}
+
+.pick-tribe-context .tribe-context-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  width: 100%;
+  text-align: center;
+  margin-bottom: 0.2rem;
+  font-style: italic;
+}
+
+.pick-tribe-context .existing-member {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255,255,255,0.08);
+  padding: 0.3rem 0.7rem 0.3rem 0.3rem;
+  border-radius: 20px;
+  animation: slideIn 0.4s ease;
+}
+
+.pick-tribe-context .existing-member img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 20%;
+}
+
+.pick-tribe-context .existing-member span {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.pick-overlay .pick-dismiss {
+  margin-top: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+/* ========== SCORE BARS ========== */
+.score-bar-container {
+  width: 120px;
+  height: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 0.3rem;
+}
+
+.score-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* ========== ELIMINATION DIALOG ========== */
+.elim-dialog {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 2500;
+  align-items: center;
+  justify-content: center;
+}
+
+.elim-dialog.show { display: flex; }
+
+.elim-dialog .elim-content {
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 600px;
+  width: 90%;
+  border: 2px solid var(--tribal-red);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.elim-dialog .castaway-elim-btn {
+  padding: 0.6rem 1rem;
+  margin: 0.3rem;
+  background: var(--panel-bg);
+  border: 2px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.elim-dialog .castaway-elim-btn:hover {
+  border-color: var(--tribal-red);
+  background: rgba(183,28,28,0.2);
+}
+
+.elim-dialog .castaway-elim-btn.selected {
+  border-color: var(--tribal-red);
+  background: var(--tribal-red);
+}
+
+/* ========== TRIBES OVERVIEW (on leaderboard) ========== */
+.tribe-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.tribe-card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1.2rem;
+  border-left: 5px solid;
+}
+
+.tribe-card .tribe-player {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 0.8rem;
+}
+
+.tribe-card .tribe-member {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.tribe-card .tribe-member:last-child { border-bottom: none; }
+
+.tribe-card .member-name { font-weight: 600; font-size: 0.9rem; }
+.tribe-card .member-points { font-weight: 700; color: var(--torch-gold); }
+.tribe-card .member-status-elim { text-decoration: line-through; opacity: 0.5; }
+.tribe-card .merge-label {
+  font-size: 0.7rem;
+  color: var(--ocean-blue);
+  background: rgba(2,119,189,0.2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 0.5rem;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+  nav { flex-direction: column; padding: 0.5rem; }
+  nav .tabs { overflow-x: auto; width: 100%; }
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  .castaway-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+  .leaderboard-row .rank { font-size: 1.5rem; width: 40px; }
+  .leaderboard-row .score { font-size: 1.5rem; }
+  main { padding: 0.8rem; }
+}
+
+/* ========== SCROLLBAR ========== */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--dark-bg); }
+::-webkit-scrollbar-thumb { background: var(--panel-bg); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--torch-orange); }
+
+/* ========== OVERFLOW TABLE ========== */
+.table-wrap { overflow-x: auto; }
+
+/* Bump chart */
+#bumpChartContainer svg {
+  background: rgba(0,0,0,0.2);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+/* ========== POWER RANKINGS ========== */
+.power-rankings {
+  background: linear-gradient(135deg, rgba(232,117,26,0.06) 0%, rgba(245,200,66,0.03) 100%);
+  border: 1px solid rgba(245,200,66,0.1);
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.power-rankings-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.power-rankings-header h3 {
+  font-size: 0.9rem;
+  color: var(--torch-gold);
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.power-rankings-ep {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  background: rgba(245,200,66,0.08);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.power-rankings-body {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  opacity: 0.9;
+}
+
+.power-rankings-body .pr-highlight {
+  color: var(--torch-gold);
+  font-weight: 700;
+}
+
+.power-rankings-edit {
+  margin-top: 0.5rem;
+}
+
+.power-rankings-edit textarea {
+  width: 100%;
+  min-height: 80px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(245,200,66,0.1);
+  border-radius: 6px;
+  color: var(--text-primary);
+  padding: 0.6rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+/* ========== EPISODE HIGHLIGHTS ========== */
+.ep-highlights {
+  background: var(--card-bg);
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  border-left: 3px solid var(--torch-orange);
+}
+
+.ep-highlights h3 {
+  font-size: 0.7rem;
+  color: var(--torch-gold);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.4rem;
+}
+
+.ep-highlight-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  font-size: 0.8rem;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.ep-highlight-item:last-child { border-bottom: none; }
+
+.ep-highlight-icon {
+  font-size: 0.9rem;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.ep-highlight-text {
+  color: var(--text-primary);
+}
+
+.ep-highlight-pts {
+  margin-left: auto;
+  font-weight: 800;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.ep-highlight-pts.positive { color: var(--jungle-green); }
+.ep-highlight-pts.negative { color: var(--tribal-red); }
+
+/* ========== HEAD-TO-HEAD ========== */
+.h2h-container {
+  background: var(--card-bg);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.h2h-selectors {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.h2h-selectors select {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(245,200,66,0.15);
+  color: var(--text-primary);
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.h2h-vs {
+  font-weight: 900;
+  color: var(--torch-gold);
+  font-size: 0.9rem;
+}
+
+.h2h-comparison {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0.5rem;
+  align-items: start;
+}
+
+.h2h-player {
+  text-align: center;
+}
+
+.h2h-player-name {
+  font-weight: 800;
+  font-size: 1rem;
+  margin-bottom: 0.4rem;
+}
+
+.h2h-stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  font-size: 0.8rem;
+}
+
+.h2h-stat-label {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  text-align: center;
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.h2h-stat-val {
+  font-weight: 800;
+  font-size: 0.9rem;
+  width: 60px;
+}
+
+.h2h-stat-val.left { text-align: right; }
+.h2h-stat-val.right { text-align: left; }
+.h2h-stat-val.winning { color: var(--torch-gold); }
+
+/* ========== SEASON TIMELINE ========== */
+.season-timeline {
+  margin-top: 1.5rem;
+}
+
+.timeline-svg {
+  width: 100%;
+  height: auto;
+  background: rgba(0,0,0,0.15);
+  border-radius: 8px;
+}
+
+.timeline-elim-marker {
+  cursor: pointer;
+}
+
+.timeline-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.timeline-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.timeline-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* Brooklyn map banner — subtle persistent strip */
+/* (bk-banner replaced by full-page .bk-map-bg) */
+
+/* Brooklyn map section — prominent on setup */
+.bk-map-section {
+  margin-top: 2rem;
+  text-align: center;
+  padding: 1.5rem;
+  background: linear-gradient(180deg, transparent 0%, rgba(232,117,26,0.03) 100%);
+  border-top: 1px solid rgba(245,200,66,0.08);
+}
+
+.bk-map-svg {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+}
+
+.bk-map-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-top: 0.5rem;
+}
+
+/* Subtle Brooklyn bg for non-draft pages */
+.bk-bg-watermark {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 350px;
+  height: auto;
+  opacity: 0.04;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.page { position: relative; }
+
+/* Print styles */
+@media print {
+  nav { position: static; }
+  .btn { display: none; }
+  body { background: #fff; color: #000; }
+  .card { border: 1px solid #ccc; }
+}
+</style>
+</head>
+<body>
+
+<!-- Full-page Brooklyn street map background -->
+<div class="bk-map-bg">
+<svg viewBox="0 0 1000 800" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
+  <defs>
+    <radialGradient id="mapVignette" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="rgba(245,200,66,0.04)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+    </radialGradient>
+  </defs>
+  <rect width="1000" height="800" fill="url(#mapVignette)"/>
+
+  <!-- === MAJOR ROADS === -->
+  <!-- Flatbush Ave (major diagonal) -->
+  <line x1="420" y1="0" x2="560" y2="800" stroke="rgba(245,200,66,0.13)" stroke-width="6"/>
+  <!-- Atlantic Ave (major E-W) -->
+  <line x1="0" y1="280" x2="1000" y2="280" stroke="rgba(245,200,66,0.12)" stroke-width="6"/>
+  <!-- 4th Ave (major N-S) -->
+  <line x1="680" y1="0" x2="680" y2="800" stroke="rgba(245,200,66,0.1)" stroke-width="5"/>
+  <!-- Fulton St -->
+  <line x1="0" y1="180" x2="1000" y2="180" stroke="rgba(245,200,66,0.08)" stroke-width="4"/>
+
+  <!-- === SECONDARY STREETS (E-W) === -->
+  <!-- Pacific St -->
+  <line x1="40" y1="330" x2="950" y2="330" stroke="rgba(245,200,66,0.06)" stroke-width="2"/>
+  <!-- Dean St -->
+  <line x1="40" y1="380" x2="950" y2="380" stroke="rgba(245,200,66,0.06)" stroke-width="2"/>
+  <!-- Bergen St -->
+  <line x1="40" y1="430" x2="950" y2="430" stroke="rgba(245,200,66,0.06)" stroke-width="2"/>
+  <!-- Wyckoff St -->
+  <line x1="40" y1="475" x2="950" y2="475" stroke="rgba(245,200,66,0.05)" stroke-width="1.5"/>
+  <!-- Warren St -->
+  <line x1="40" y1="520" x2="950" y2="520" stroke="rgba(245,200,66,0.05)" stroke-width="1.5"/>
+  <!-- Baltic St -->
+  <line x1="40" y1="560" x2="950" y2="560" stroke="rgba(245,200,66,0.05)" stroke-width="1.5"/>
+  <!-- Butler St -->
+  <line x1="40" y1="600" x2="950" y2="600" stroke="rgba(245,200,66,0.04)" stroke-width="1.5"/>
+  <!-- Douglass St -->
+  <line x1="40" y1="640" x2="950" y2="640" stroke="rgba(245,200,66,0.04)" stroke-width="1.5"/>
+  <!-- DeGraw St -->
+  <line x1="40" y1="680" x2="950" y2="680" stroke="rgba(245,200,66,0.035)" stroke-width="1.5"/>
+  <!-- Sackett St -->
+  <line x1="40" y1="720" x2="950" y2="720" stroke="rgba(245,200,66,0.035)" stroke-width="1.5"/>
+  <!-- State St -->
+  <line x1="40" y1="230" x2="600" y2="230" stroke="rgba(245,200,66,0.05)" stroke-width="1.5"/>
+  <!-- Schermerhorn St -->
+  <line x1="40" y1="248" x2="580" y2="248" stroke="rgba(245,200,66,0.04)" stroke-width="1.5"/>
+  <!-- Livingston St -->
+  <line x1="60" y1="210" x2="500" y2="210" stroke="rgba(245,200,66,0.04)" stroke-width="1.5"/>
+  <!-- DeKalb Ave (Fort Greene) -->
+  <line x1="300" y1="120" x2="900" y2="120" stroke="rgba(245,200,66,0.06)" stroke-width="2.5"/>
+  <!-- Willoughby -->
+  <line x1="350" y1="80" x2="850" y2="80" stroke="rgba(245,200,66,0.04)" stroke-width="1.5"/>
+  <!-- Myrtle Ave -->
+  <line x1="200" y1="145" x2="950" y2="145" stroke="rgba(245,200,66,0.055)" stroke-width="2.5"/>
+
+  <!-- === SECONDARY STREETS (N-S) === -->
+  <!-- Court St -->
+  <line x1="180" y1="100" x2="180" y2="750" stroke="rgba(245,200,66,0.06)" stroke-width="2"/>
+  <!-- Smith St -->
+  <line x1="260" y1="100" x2="260" y2="750" stroke="rgba(245,200,66,0.06)" stroke-width="2"/>
+  <!-- Hoyt St -->
+  <line x1="330" y1="100" x2="330" y2="750" stroke="rgba(245,200,66,0.05)" stroke-width="1.5"/>
+  <!-- Bond St -->
+  <line x1="380" y1="200" x2="380" y2="700" stroke="rgba(245,200,66,0.04)" stroke-width="1.5"/>
+  <!-- Nevins St -->
+  <line x1="440" y1="200" x2="440" y2="750" stroke="rgba(245,200,66,0.05)" stroke-width="1.5"/>
+  <!-- 3rd Ave -->
+  <line x1="530" y1="200" x2="530" y2="800" stroke="rgba(245,200,66,0.06)" stroke-width="2"/>
+  <!-- 5th Ave -->
+  <line x1="760" y1="200" x2="760" y2="800" stroke="rgba(245,200,66,0.06)" stroke-width="2"/>
+  <!-- 6th Ave -->
+  <line x1="830" y1="250" x2="830" y2="800" stroke="rgba(245,200,66,0.05)" stroke-width="1.5"/>
+  <!-- 7th Ave -->
+  <line x1="900" y1="300" x2="900" y2="800" stroke="rgba(245,200,66,0.04)" stroke-width="1.5"/>
+  <!-- Vanderbilt Ave -->
+  <line x1="580" y1="100" x2="580" y2="500" stroke="rgba(245,200,66,0.05)" stroke-width="1.5"/>
+  <!-- Carlton Ave -->
+  <line x1="610" y1="80" x2="610" y2="400" stroke="rgba(245,200,66,0.04)" stroke-width="1.5"/>
+  <!-- Clermont Ave -->
+  <line x1="640" y1="60" x2="640" y2="350" stroke="rgba(245,200,66,0.035)" stroke-width="1.5"/>
+  <!-- Adelphi St -->
+  <line x1="560" y1="60" x2="560" y2="300" stroke="rgba(245,200,66,0.035)" stroke-width="1.5"/>
+
+  <!-- === BARCLAYS CENTER (prominent diamond) === -->
+  <polygon points="530,270 565,250 600,270 565,290" fill="rgba(232,117,26,0.12)" stroke="rgba(232,117,26,0.18)" stroke-width="2"/>
+  <polygon points="530,270 565,250 600,270 565,290" fill="none" stroke="rgba(232,117,26,0.09)" stroke-width="5"/>
+  <!-- Barclays inner detail -->
+  <circle cx="565" cy="270" r="12" fill="none" stroke="rgba(232,117,26,0.1)" stroke-width="1"/>
+  <text x="565" y="273" fill="rgba(232,117,26,0.16)" font-size="6" font-weight="800" font-family="system-ui" text-anchor="middle" letter-spacing="1">BARCLAYS</text>
+
+  <!-- === FORT GREENE PARK (prominent, real shape) === -->
+  <!-- Park boundary — large trapezoidal block between DeKalb, Myrtle, Washington Park, St Edwards -->
+  <path d="M 470,60 L 590,55 L 600,140 L 465,145 Z" fill="rgba(46,125,50,0.07)" stroke="rgba(46,125,50,0.1)" stroke-width="1.5" rx="5"/>
+  <!-- Inner paths (walking paths through the park) -->
+  <line x1="475" y1="100" x2="595" y2="97" stroke="rgba(46,125,50,0.06)" stroke-width="0.8" stroke-dasharray="3,2"/>
+  <line x1="530" y1="62" x2="532" y2="142" stroke="rgba(46,125,50,0.06)" stroke-width="0.8" stroke-dasharray="3,2"/>
+  <!-- Diagonal paths to Prison Ship Martyrs Monument -->
+  <line x1="475" y1="65" x2="533" y2="100" stroke="rgba(46,125,50,0.05)" stroke-width="0.6" stroke-dasharray="2,2"/>
+  <line x1="593" y1="60" x2="533" y2="100" stroke="rgba(46,125,50,0.05)" stroke-width="0.6" stroke-dasharray="2,2"/>
+  <!-- Prison Ship Martyrs Monument (circle at center) -->
+  <circle cx="533" cy="100" r="6" fill="rgba(46,125,50,0.05)" stroke="rgba(46,125,50,0.08)" stroke-width="0.8"/>
+  <circle cx="533" cy="100" r="2" fill="rgba(46,125,50,0.09)"/>
+  <!-- Park label -->
+  <text x="533" y="88" fill="rgba(46,125,50,0.12)" font-size="6" font-weight="800" font-family="system-ui" text-anchor="middle" letter-spacing="2">FORT GREENE</text>
+  <text x="533" y="118" fill="rgba(46,125,50,0.1)" font-size="5" font-weight="700" font-family="system-ui" text-anchor="middle" letter-spacing="1.5">PARK</text>
+
+  <!-- === PROSPECT PARK edge (bottom right) === -->
+  <path d="M 750,660 Q 840,620 940,660 Q 980,720 940,780 Q 840,800 750,780 Q 710,720 750,660" fill="rgba(46,125,50,0.06)" stroke="rgba(46,125,50,0.09)" stroke-width="1.5"/>
+  <!-- Park inner paths -->
+  <path d="M 790,690 Q 850,680 900,700" fill="none" stroke="rgba(46,125,50,0.05)" stroke-width="0.7" stroke-dasharray="3,2"/>
+  <path d="M 810,740 Q 860,730 910,745" fill="none" stroke="rgba(46,125,50,0.04)" stroke-width="0.7" stroke-dasharray="3,2"/>
+  <text x="850" y="725" fill="rgba(46,125,50,0.1)" font-size="7" font-weight="700" font-family="system-ui" text-anchor="middle" letter-spacing="2">PROSPECT PARK</text>
+
+  <!-- === NEIGHBORHOOD LABELS === -->
+  <text x="220" y="420" fill="rgba(245,200,66,0.1)" font-size="14" font-weight="800" font-family="system-ui" letter-spacing="6" text-anchor="middle">BOERUM HILL</text>
+  <text x="650" y="45" fill="rgba(245,200,66,0.09)" font-size="13" font-weight="800" font-family="system-ui" letter-spacing="5" text-anchor="middle">FORT GREENE</text>
+  <text x="780" y="500" fill="rgba(245,200,66,0.08)" font-size="12" font-weight="800" font-family="system-ui" letter-spacing="5" text-anchor="middle">PARK SLOPE</text>
+  <text x="350" y="310" fill="rgba(245,200,66,0.06)" font-size="9" font-weight="700" font-family="system-ui" letter-spacing="3" text-anchor="middle">DOWNTOWN BK</text>
+  <text x="440" y="580" fill="rgba(245,200,66,0.06)" font-size="9" font-weight="700" font-family="system-ui" letter-spacing="3" text-anchor="middle">GOWANUS</text>
+  <text x="150" y="550" fill="rgba(245,200,66,0.06)" font-size="9" font-weight="700" font-family="system-ui" letter-spacing="3" text-anchor="middle">COBBLE HILL</text>
+
+  <!-- === SUBWAY INDICATORS === -->
+  <!-- Atlantic Ave-Barclays (B/D/N/Q/R/2/3/4/5) -->
+  <circle cx="555" cy="280" r="5" fill="rgba(232,117,26,0.15)"/>
+  <circle cx="555" cy="280" r="8" fill="none" stroke="rgba(232,117,26,0.1)" stroke-width="1"/>
+  <!-- Hoyt-Schermerhorn -->
+  <circle cx="330" cy="248" r="3.5" fill="rgba(232,117,26,0.12)"/>
+  <circle cx="330" cy="248" r="6" fill="none" stroke="rgba(232,117,26,0.08)" stroke-width="0.8"/>
+  <!-- Bergen St -->
+  <circle cx="260" cy="430" r="3.5" fill="rgba(232,117,26,0.12)"/>
+  <circle cx="260" cy="430" r="6" fill="none" stroke="rgba(232,117,26,0.08)" stroke-width="0.8"/>
+  <!-- Lafayette Ave -->
+  <circle cx="610" cy="120" r="3.5" fill="rgba(232,117,26,0.12)"/>
+  <circle cx="610" cy="120" r="6" fill="none" stroke="rgba(232,117,26,0.08)" stroke-width="0.8"/>
+  <!-- 4th Ave / 9th St -->
+  <circle cx="680" cy="600" r="3.5" fill="rgba(232,117,26,0.1)"/>
+  <circle cx="680" cy="600" r="6" fill="none" stroke="rgba(232,117,26,0.07)" stroke-width="0.8"/>
+
+  <!-- === GOWANUS CANAL === -->
+  <line x1="400" y1="500" x2="420" y2="750" stroke="rgba(2,119,189,0.1)" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- === COMPASS ROSE (bottom-left) === -->
+  <g transform="translate(80,720)" opacity="0.06">
+    <line x1="0" y1="-18" x2="0" y2="18" stroke="rgba(245,200,66,1)" stroke-width="1.5"/>
+    <line x1="-18" y1="0" x2="18" y2="0" stroke="rgba(245,200,66,1)" stroke-width="1.5"/>
+    <polygon points="0,-18 -4,-6 4,-6" fill="rgba(245,200,66,1)"/>
+    <text x="0" y="-22" fill="rgba(245,200,66,1)" font-size="7" font-weight="900" text-anchor="middle" font-family="system-ui">N</text>
+  </g>
+</svg>
+</div>
+
+<nav>
+  <div class="logo" style="animation:flicker 3s ease infinite">SURVIVOR 50 <span>Fantasy</span></div>
+  <div class="tabs">
+    <div class="tab" data-page="setup">Setup</div>
+    <div class="tab" data-page="propbet">Prop Bet</div>
+    <div class="tab" data-page="draft">Draft</div>
+    <div class="tab active" data-page="leaderboard">Leaderboard</div>
+    <div class="tab" data-page="scoring">Scoring</div>
+    <div class="tab" data-page="cast">Cast</div>
+    <div class="tab" data-page="merge">Merge Draft</div>
+  </div>
+  <div class="actions">
+    <button class="btn btn-secondary btn-sm" onclick="loadTestData()" title="Load fake data for testing">Test Data</button>
+    <button class="btn btn-secondary btn-sm" onclick="exportData()">Export</button>
+    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('importFile').click()">Import</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+  </div>
+</nav>
+
+<main>
+
+<!-- Brooklyn map background is now full-page via .bk-map-bg above -->
+
+<!-- ==================== SETUP PAGE ==================== -->
+<div class="page" id="page-setup">
+  <h2>League Setup</h2>
+
+  <div class="grid-2">
+    <div class="card setup-section">
+      <h3>Fantasy Players</h3>
+      <div id="playerList"></div>
+      <button class="btn btn-secondary btn-sm" onclick="addPlayer()" style="margin-top:0.5rem">+ Add Player</button>
+    </div>
+
+    <div class="card setup-section">
+      <h3>Draft Settings</h3>
+      <div class="form-group" style="margin-bottom:1rem">
+        <label style="display:block;font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.3rem">Rounds in initial draft</label>
+        <input type="number" id="draftRounds" value="3" min="1" max="5" style="width:80px;padding:0.4rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text-primary)">
+      </div>
+      <div class="form-group" style="margin-bottom:1rem">
+        <label style="display:block;font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.3rem">Max times a castaway can be picked</label>
+        <input type="number" id="maxPicks" value="2" min="1" max="4" style="width:80px;padding:0.4rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text-primary)">
+      </div>
+      <div class="form-group" style="margin-bottom:1rem">
+        <label style="display:block;font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.3rem">Merge draft trigger (castaways remaining)</label>
+        <input type="number" id="mergeTrigger" value="9" min="4" max="15" style="width:80px;padding:0.4rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text-primary)">
+      </div>
+      <div class="form-group" style="margin-bottom:1rem">
+        <label style="display:block;font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.3rem">Scoring starts at episode</label>
+        <input type="number" id="scoringStartEp" value="2" min="1" max="5" style="width:80px;padding:0.4rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text-primary)">
+      </div>
+      <button class="btn btn-primary" onclick="saveDraftSettings()" style="margin-top:0.5rem">Save Settings</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Draft Order</h3>
+    <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:0.8rem">Randomize the snake draft order. Players pick 1→N, then N→1, repeating for each round.</p>
+    <button class="btn btn-primary" onclick="randomizeDraftOrder()">Randomize Order</button>
+    <div id="draftOrderPreview" style="margin-top:1rem"></div>
+  </div>
+
+  <!-- Brooklyn neighborhood map - subtle decorative element -->
+  <div class="bk-map-section">
+    <svg viewBox="0 0 400 180" class="bk-map-svg" xmlns="http://www.w3.org/2000/svg">
+      <!-- Street grid (simplified BK near Barclays) -->
+      <defs>
+        <linearGradient id="mapFade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(245,200,66,0.12)"/>
+          <stop offset="100%" stop-color="rgba(245,200,66,0.02)"/>
+        </linearGradient>
+      </defs>
+      <!-- Flatbush Ave (diagonal) -->
+      <line x1="180" y1="10" x2="240" y2="170" stroke="rgba(245,200,66,0.08)" stroke-width="4"/>
+      <!-- Atlantic Ave -->
+      <line x1="20" y1="65" x2="380" y2="65" stroke="rgba(245,200,66,0.07)" stroke-width="3"/>
+      <!-- 4th Ave -->
+      <line x1="280" y1="10" x2="280" y2="170" stroke="rgba(245,200,66,0.06)" stroke-width="2.5"/>
+      <!-- Dean St -->
+      <line x1="40" y1="90" x2="350" y2="90" stroke="rgba(245,200,66,0.05)" stroke-width="1.5"/>
+      <!-- Bergen St -->
+      <line x1="40" y1="110" x2="350" y2="110" stroke="rgba(245,200,66,0.05)" stroke-width="1.5"/>
+      <!-- Smith St -->
+      <line x1="120" y1="30" x2="120" y2="160" stroke="rgba(245,200,66,0.05)" stroke-width="1.5"/>
+      <!-- Court St -->
+      <line x1="80" y1="30" x2="80" y2="160" stroke="rgba(245,200,66,0.04)" stroke-width="1.5"/>
+      <!-- Vanderbilt -->
+      <line x1="220" y1="30" x2="220" y2="160" stroke="rgba(245,200,66,0.05)" stroke-width="1.5"/>
+      <!-- Barclays Center (diamond shape) -->
+      <polygon points="210,55 230,45 250,55 230,65" fill="rgba(232,117,26,0.15)" stroke="rgba(232,117,26,0.2)" stroke-width="1"/>
+      <!-- Neighborhood labels -->
+      <text x="90" y="100" fill="rgba(245,200,66,0.12)" font-size="9" font-weight="700" font-family="system-ui" letter-spacing="2">BOERUM HILL</text>
+      <text x="210" y="40" fill="rgba(245,200,66,0.10)" font-size="8" font-weight="700" font-family="system-ui" letter-spacing="2">FORT GREENE</text>
+      <text x="285" y="130" fill="rgba(245,200,66,0.10)" font-size="8" font-weight="700" font-family="system-ui" letter-spacing="2">PARK SLOPE</text>
+      <text x="225" y="62" fill="rgba(232,117,26,0.2)" font-size="5" font-weight="600" font-family="system-ui" text-anchor="middle">BARCLAYS</text>
+      <!-- Torch flames as map markers -->
+      <circle cx="100" cy="85" r="3" fill="rgba(232,117,26,0.25)"/>
+      <circle cx="100" cy="85" r="6" fill="none" stroke="rgba(232,117,26,0.1)" stroke-width="1"/>
+      <circle cx="250" cy="100" r="3" fill="rgba(232,117,26,0.2)"/>
+      <circle cx="250" cy="100" r="6" fill="none" stroke="rgba(232,117,26,0.08)" stroke-width="1"/>
+      <circle cx="310" cy="115" r="3" fill="rgba(232,117,26,0.2)"/>
+      <circle cx="310" cy="115" r="6" fill="none" stroke="rgba(232,117,26,0.08)" stroke-width="1"/>
+      <circle cx="160" cy="75" r="3" fill="rgba(232,117,26,0.2)"/>
+      <circle cx="160" cy="75" r="6" fill="none" stroke="rgba(232,117,26,0.08)" stroke-width="1"/>
+    </svg>
+    <div class="bk-map-label">Brooklyn, NY &middot; Where the tribe assembles</div>
+  </div>
+</div>
+
+<!-- ==================== PROP BET PAGE ==================== -->
+<div class="page" id="page-propbet">
+  <h2>Episode 1 Prop Bet — First Boot</h2>
+  <div class="card">
+    <p style="color:var(--text-secondary);margin-bottom:1rem">Everyone picks who they think will be voted out first. Correct guess = <strong style="color:var(--torch-gold)">+5 bonus points</strong>.</p>
+    <div class="prop-bet-grid" id="propBetGrid"></div>
+    <div style="margin-top:1.5rem">
+      <label style="font-size:0.85rem;color:var(--text-secondary);margin-right:0.5rem">Who was actually voted out first?</label>
+      <select id="actualFirstBoot" onchange="resolveFirstBoot()" style="padding:0.5rem;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:var(--text-primary)">
+        <option value="">-- Not yet revealed --</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== DRAFT PAGE ==================== -->
+<div class="page" id="page-draft">
+  <div class="draft-controls" style="margin-bottom:0.5rem">
+    <h2 style="margin:0">Snake Draft</h2>
+    <button class="btn btn-primary" id="startDraftBtn" onclick="startDraft()">Start Draft</button>
+    <button class="btn btn-danger btn-sm" onclick="undoLastPick()" id="undoBtn" style="display:none">Undo Last Pick</button>
+    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('draftResultsWrap').style.display = document.getElementById('draftResultsWrap').style.display === 'none' ? '' : 'none'">Toggle Results Table</button>
+  </div>
+
+  <div class="draft-tv-layout" id="draftTvLayout">
+    <!-- Left sidebar: current pick + order -->
+    <div class="draft-sidebar">
+      <div class="draft-current-pick" id="draftCurrentPick">
+        <div class="on-the-clock">On The Clock</div>
+        <div class="current-player-name" id="draftCurrentPlayer">—</div>
+        <div class="pick-info" id="draftPickInfo">Draft not started</div>
+      </div>
+      <div class="draft-order-display" id="draftOrderDisplay"></div>
+    </div>
+
+    <!-- Main area: castaway grid -->
+    <div>
+      <div class="draft-pick-area" id="draftPickArea"></div>
+    </div>
+  </div>
+  <!-- Tribes reveal - separate container outside the grid layout -->
+  <div id="draftTribesRevealContainer" style="display:none"></div>
+
+  <div class="card" id="draftResultsWrap" style="display:none;margin-top:1rem">
+    <h3>Draft Results</h3>
+    <div class="table-wrap">
+      <table class="draft-results-table" id="draftResultsTable">
+        <thead><tr><th>Pick #</th><th>Round</th><th>Player</th><th>Castaway</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== LEADERBOARD PAGE ==================== -->
+<div class="page active" id="page-leaderboard">
+  <h2>Leaderboard</h2>
+
+  <!-- Power Rankings (commissioner editorial) -->
+  <div class="power-rankings" id="powerRankingsSection" style="display:none">
+    <div class="power-rankings-header">
+      <h3>Power Rankings</h3>
+      <span class="power-rankings-ep" id="powerRankingsEp"></span>
+      <button class="btn btn-secondary btn-sm" style="margin-left:auto;font-size:0.65rem;padding:2px 8px" onclick="togglePowerRankingsEdit()">Edit</button>
+    </div>
+    <div class="power-rankings-body" id="powerRankingsBody"></div>
+    <div class="power-rankings-edit" id="powerRankingsEditArea" style="display:none">
+      <textarea id="powerRankingsTextarea" placeholder="Write your weekly power rankings, hot takes, and analysis here..."></textarea>
+      <button class="btn btn-primary btn-sm" style="margin-top:0.3rem;font-size:0.7rem" onclick="savePowerRankings()">Save</button>
+    </div>
+  </div>
+
+  <!-- Leaderboard + Episode Highlights side-by-side -->
+  <div class="lb-split">
+    <div class="lb-split-standings" id="leaderboardContainer"></div>
+    <div class="lb-split-highlights">
+      <div class="ep-highlights" id="epHighlightsSection" style="display:none">
+        <h3 id="epHighlightsTitle">Episode Highlights</h3>
+        <div id="epHighlightsContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Win Probability (integrated into leaderboard rows) -->
+  <div id="winProbSection" style="display:none">
+    <div id="winProbContainer"></div>
+  </div>
+
+  <!-- Bump chart: standings over time -->
+  <div class="card" id="bumpChartSection" style="margin-top:1.5rem;display:none">
+    <h3>Season Standings Race</h3>
+    <div id="bumpChartContainer" style="width:100%;overflow-x:auto"></div>
+  </div>
+
+  <!-- Season Timeline (Swimlane) -->
+  <div class="card season-timeline" id="timelineSection" style="display:none">
+    <h3 style="color:var(--torch-gold);margin-bottom:0.5rem">Tribe War Map</h3>
+    <div id="timelineContainer"></div>
+  </div>
+
+  <!-- Head-to-Head -->
+  <div class="h2h-container" id="h2hSection" style="display:none">
+    <h3 style="color:var(--torch-gold);font-size:0.85rem;margin-bottom:0.5rem">Head-to-Head Matchup</h3>
+    <div class="h2h-selectors" id="h2hSelectors"></div>
+    <div id="h2hResult"></div>
+  </div>
+
+  <h3 style="margin-top:2rem;color:var(--torch-gold)">Fantasy Tribes</h3>
+  <div class="tribe-cards" id="tribeCards"></div>
+  <svg viewBox="0 0 400 180" class="bk-bg-watermark" xmlns="http://www.w3.org/2000/svg"><line x1="180" y1="10" x2="240" y2="170" stroke="rgba(245,200,66,0.5)" stroke-width="4"/><line x1="20" y1="65" x2="380" y2="65" stroke="rgba(245,200,66,0.4)" stroke-width="3"/><line x1="280" y1="10" x2="280" y2="170" stroke="rgba(245,200,66,0.35)" stroke-width="2.5"/><line x1="40" y1="90" x2="350" y2="90" stroke="rgba(245,200,66,0.3)" stroke-width="1.5"/><line x1="40" y1="110" x2="350" y2="110" stroke="rgba(245,200,66,0.3)" stroke-width="1.5"/><line x1="120" y1="30" x2="120" y2="160" stroke="rgba(245,200,66,0.3)" stroke-width="1.5"/><line x1="220" y1="30" x2="220" y2="160" stroke="rgba(245,200,66,0.3)" stroke-width="1.5"/><polygon points="210,55 230,45 250,55 230,65" fill="rgba(232,117,26,0.4)" stroke="rgba(232,117,26,0.5)" stroke-width="1"/><text x="90" y="100" fill="rgba(245,200,66,0.5)" font-size="9" font-weight="700" font-family="system-ui" letter-spacing="2">BOERUM HILL</text><text x="210" y="40" fill="rgba(245,200,66,0.4)" font-size="8" font-weight="700" font-family="system-ui" letter-spacing="2">FORT GREENE</text><text x="285" y="130" fill="rgba(245,200,66,0.4)" font-size="8" font-weight="700" font-family="system-ui" letter-spacing="2">PARK SLOPE</text></svg>
+</div>
+
+<!-- ==================== SCORING PAGE ==================== -->
+<div class="page" id="page-scoring">
+  <h2>Episode Scoring</h2>
+
+  <div class="scoring-episode-select" id="episodeSelect"></div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table class="scoring-grid" id="scoringGrid">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div style="margin-top:1rem; display:flex; gap:0.5rem">
+      <button class="btn btn-primary" onclick="saveEpisodeScoring()">Save Episode Scores</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== CAST PAGE ==================== -->
+<div class="page" id="page-cast">
+  <h2>Season 50 Cast</h2>
+  <div class="castaway-grid" id="castGrid"></div>
+</div>
+
+<!-- ==================== MERGE DRAFT PAGE ==================== -->
+<div class="page" id="page-merge">
+  <h2>Merge Draft</h2>
+  <div class="merge-info">
+    <strong>How it works:</strong> When the number of remaining castaways hits the trigger
+    (default: 9), each player drafts 1 additional castaway in reverse leaderboard order
+    (last place picks first). Points from merge picks count going forward only.
+  </div>
+
+  <div class="card">
+    <div class="draft-controls">
+      <div class="draft-status" id="mergeStatus">Merge draft not started</div>
+      <button class="btn btn-primary" id="startMergeBtn" onclick="startMergeDraft()">Start Merge Draft</button>
+      <button class="btn btn-danger btn-sm" onclick="undoMergePick()" id="undoMergeBtn" style="display:none">Undo</button>
+    </div>
+    <div class="draft-order-display" id="mergeDraftOrder"></div>
+  </div>
+
+  <div class="card">
+    <h3>Available Castaways</h3>
+    <div class="draft-pick-area" id="mergePickArea"></div>
+  </div>
+
+  <div class="card">
+    <h3>Merge Draft Results</h3>
+    <div class="table-wrap">
+      <table class="draft-results-table" id="mergeResultsTable">
+        <thead><tr><th>Pick #</th><th>Player</th><th>Castaway</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Pick Announcement Overlay -->
+<div class="pick-overlay" id="pickOverlay" onclick="dismissPickOverlay()">
+  <div class="pick-text">WITH THE <span id="pickNumber"></span> PICK</div>
+  <div class="pick-player" id="pickPlayerName"></div>
+  <div class="pick-selects">selects</div>
+  <img class="pick-castaway-photo" id="pickCastawayPhoto" src="" alt="" style="display:none">
+  <div class="pick-castaway" id="pickCastawayName"></div>
+  <div class="pick-tribe-context" id="pickTribeContext"></div>
+  <div class="pick-dismiss">click anywhere to continue</div>
+</div>
+
+<!-- Elimination Dialog -->
+<div class="elim-dialog" id="elimDialog">
+  <div class="elim-content">
+    <h3 style="color:var(--tribal-red);margin-bottom:0.5rem">The Tribe Has Spoken</h3>
+    <p style="color:var(--text-secondary);margin-bottom:1rem;font-size:0.9rem">Select who was eliminated this episode (click to toggle, then confirm):</p>
+    <div id="elimCastaways" style="display:flex;flex-wrap:wrap;gap:0.3rem"></div>
+    <div style="margin-top:1.5rem;display:flex;gap:0.5rem;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeElimDialog(false)">No Elimination</button>
+      <button class="btn btn-danger" onclick="closeElimDialog(true)">Confirm Elimination</button>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ===================== DATA MODEL =====================
+const PLAYER_COLORS = [
+  '#E8751A', '#4CAF50', '#2196F3', '#9C27B0', '#FF5722',
+  '#00BCD4', '#CDDC39', '#E91E63', '#607D8B', '#FF9800', '#795548'
+];
+
+const DEFAULT_CASTAWAYS = [
+  { name: 'Jenna Lewis-Dougherty', shortName: 'Jenna', seasons: '1, 8', initials: 'JL', gender: 'F', s50tribe: 'Cila', photo: 'https://static.wikia.nocookie.net/survivor/images/e/e4/S50_Jenna_Lewis-Dougherty.jpg/revision/latest/top-crop/width/200/height/200?cb=20260128233416' },
+  { name: 'Colby Donaldson', shortName: 'Colby', seasons: '2, 8, 20', initials: 'CD', gender: 'M', s50tribe: 'Vatu', photo: 'https://static.wikia.nocookie.net/survivor/images/8/82/S50_Colby_Donaldson.jpg/revision/latest/top-crop/width/200/height/200?cb=20260208205223' },
+  { name: 'Stephenie LaGrossa', shortName: 'Stephenie', seasons: '10, 11, 20', initials: 'SL', gender: 'F', s50tribe: 'Vatu', photo: 'https://static.wikia.nocookie.net/survivor/images/f/f5/S50_Stephenie_LaGrossa_Kendrick.jpg/revision/latest/top-crop/width/200/height/200?cb=20260208205601' },
+  { name: 'Cirie Fields', shortName: 'Cirie', seasons: '12, 16, 20, 34', initials: 'CF', gender: 'F', s50tribe: 'Cila', photo: 'https://static.wikia.nocookie.net/survivor/images/5/5c/S50_Cirie_Fields.jpg/revision/latest/top-crop/width/200/height/200?cb=20260128233255' },
+  { name: 'Ozzy Lusth', shortName: 'Ozzy', seasons: '13, 16, 23, 34', initials: 'OL', gender: 'M', s50tribe: 'Cila', photo: 'https://static.wikia.nocookie.net/survivor/images/f/f6/S50_Ozzy_Lusth.jpg/revision/latest/top-crop/width/200/height/200?cb=20260128233638' },
+  { name: 'Coach Wade', shortName: 'Coach', seasons: '18, 20, 23', initials: 'CW', gender: 'M', s50tribe: 'Kalo', photo: 'https://static.wikia.nocookie.net/survivor/images/d/d1/S20_Coach_Wade.jpg/revision/latest/top-crop/width/200/height/200?cb=20220114010628' },
+  { name: 'Aubry Bracco', shortName: 'Aubry', seasons: '32, 34, 38', initials: 'AB', gender: 'F', s50tribe: 'Vatu', photo: 'https://static.wikia.nocookie.net/survivor/images/7/73/S50_Aubry_Bracco.jpg/revision/latest/top-crop/width/200/height/200?cb=20260208205135' },
+  { name: 'Chrissy Hofbeck', shortName: 'Chrissy', seasons: '35', initials: 'CH', gender: 'F', s50tribe: 'Kalo', photo: 'https://static.wikia.nocookie.net/survivor/images/b/b3/S50_Chrissy_Hofbeck.jpg/revision/latest/top-crop/width/200/height/200?cb=20260129000221' },
+  { name: 'Christian Hubicki', shortName: 'Christian', seasons: '37', initials: 'CH', gender: 'M', s50tribe: 'Cila', photo: 'https://static.wikia.nocookie.net/survivor/images/8/89/S50_Christian_Hubicki.jpg/revision/latest/top-crop/width/200/height/200?cb=20260128174729' },
+  { name: 'Angelina Keeley', shortName: 'Angelina', seasons: '37', initials: 'AK', gender: 'F', s50tribe: 'Vatu', photo: 'https://static.wikia.nocookie.net/survivor/images/0/00/S50_Angelina_Keeley.jpg/revision/latest/top-crop/width/200/height/200?cb=20260208205100' },
+  { name: 'Mike White', shortName: 'Mike W', seasons: '37', initials: 'MW', gender: 'M', s50tribe: 'Kalo', photo: 'https://static.wikia.nocookie.net/survivor/images/a/ad/S50_Mike_White.jpg/revision/latest/top-crop/width/200/height/200?cb=20260129000719' },
+  { name: 'Rick Devens', shortName: 'Devens', seasons: '38', initials: 'RD', gender: 'M', s50tribe: 'Cila', photo: 'https://static.wikia.nocookie.net/survivor/images/4/47/S50_Rick_Devens.jpg/revision/latest/top-crop/width/200/height/200?cb=20260128233756' },
+  { name: 'Jonathan Young', shortName: 'Jonathan', seasons: '42', initials: 'JY', gender: 'M', s50tribe: 'Kalo', photo: 'https://static.wikia.nocookie.net/survivor/images/2/2c/S50_Jonathan_Young.jpg/revision/latest/top-crop/width/200/height/200?cb=20260129000605' },
+  { name: 'Dee Valladares', shortName: 'Dee', seasons: '45 (Winner)', initials: 'DV', gender: 'F', s50tribe: 'Kalo', photo: 'https://static.wikia.nocookie.net/survivor/images/2/2b/S50_Dee_Valladares.jpg/revision/latest/top-crop/width/200/height/200?cb=20260129000526' },
+  { name: 'Emily Flippen', shortName: 'Emily', seasons: '45', initials: 'EF', gender: 'F', s50tribe: 'Cila', photo: 'https://static.wikia.nocookie.net/survivor/images/3/33/S50_Emily_Flippen.jpg/revision/latest/top-crop/width/200/height/200?cb=20260128233342' },
+  { name: 'Q Burdette', shortName: 'Q', seasons: '46', initials: 'QB', gender: 'M', s50tribe: 'Vatu', photo: 'https://static.wikia.nocookie.net/survivor/images/f/f9/S50_Q_Burdette.jpg/revision/latest/top-crop/width/200/height/200?cb=20260208205430' },
+  { name: 'Tiffany Ervin', shortName: 'Tiffany', seasons: '47', initials: 'TE', gender: 'F', s50tribe: 'Kalo', photo: 'https://static.wikia.nocookie.net/survivor/images/e/e0/S50_Tiffany_Nicole_Ervin.jpg/revision/latest/top-crop/width/200/height/200?cb=20260129000837' },
+  { name: 'Charlie Davis', shortName: 'Charlie', seasons: '47', initials: 'CD', gender: 'M', s50tribe: 'Kalo', photo: 'https://static.wikia.nocookie.net/survivor/images/8/84/S50_Charlie_Davis.jpg/revision/latest/top-crop/width/200/height/200?cb=20260129000136' },
+  { name: 'Genevieve Mushaluk', shortName: 'Genevieve', seasons: '47', initials: 'GM', gender: 'F', s50tribe: 'Vatu', photo: 'https://static.wikia.nocookie.net/survivor/images/8/82/S50_Genevieve_Mushaluk.jpg/revision/latest/top-crop/width/200/height/200?cb=20260208205302' },
+  { name: 'Kamilla Karthigesu', shortName: 'Kamilla', seasons: '48', initials: 'KK', gender: 'F', s50tribe: 'Kalo', photo: 'https://static.wikia.nocookie.net/survivor/images/e/e9/S50_Kamilla_Karthigesu.jpg/revision/latest/top-crop/width/200/height/200?cb=20260129000639' },
+  { name: 'Kyle Fraser', shortName: 'Kyle', seasons: '48 (Winner)', initials: 'KF', gender: 'M', s50tribe: 'Vatu', photo: 'https://static.wikia.nocookie.net/survivor/images/d/db/S50_Kyle_Fraser.jpg/revision/latest/top-crop/width/200/height/200?cb=20260208205341' },
+  { name: 'Joe Hunter', shortName: 'Joe', seasons: '49', initials: 'JH', gender: 'M', s50tribe: 'Cila', photo: 'https://static.wikia.nocookie.net/survivor/images/3/3e/S50_Joe_Hunter.jpg/revision/latest/top-crop/width/200/height/200?cb=20260128233541' },
+  { name: 'Savannah Louie', shortName: 'Savannah', seasons: '49 (Winner)', initials: 'SvL', gender: 'F', s50tribe: 'Cila', photo: 'https://static.wikia.nocookie.net/survivor/images/f/f4/S49_Savannah_Louie.jpg/revision/latest/top-crop/width/200/height/200?cb=20250820172743' },
+  { name: 'Rizo Velovic', shortName: 'Rizo', seasons: '49', initials: 'RV', gender: 'M', s50tribe: 'Vatu', photo: 'https://static.wikia.nocookie.net/survivor/images/8/8b/S50_Rizo_Velovic.jpg/revision/latest/top-crop/width/200/height/200?cb=20260208205520' },
+];
+
+const SCORING_CATEGORIES = [
+  { key: 'survives', label: 'Survives Tribal', short: 'Surv TC', points: 3, type: 'check' },
+  { key: 'findIdol', label: 'Finds/Possesses Idol', short: 'Find Idol', points: 3, type: 'check' },
+  { key: 'playIdol', label: 'Plays Idol Successfully', short: 'Play Idol', points: 8, type: 'check' },
+  { key: 'findAdvantage', label: 'Finds/Wins Advantage', short: 'Find Adv', points: 3, type: 'check' },
+  { key: 'playAdvantage', label: 'Plays Advantage to Effect', short: 'Play Adv', points: 4, type: 'check' },
+  { key: 'makesMerge', label: 'Makes Merge', short: 'Merge', points: 4, type: 'check' },
+  { key: 'idolPocket', label: 'Idol in Pocket Elim', short: 'Idol Pocket', points: -5, type: 'check' },
+  { key: 'quit', label: 'Non-Medical Leaves', short: 'Quit', points: -15, type: 'check' },
+  { key: 'immunityWin', label: 'Individual Immunity Win', short: 'Immun Win', points: 5, type: 'check' },
+  { key: 'firemaking', label: 'Firemaking Winner', short: 'Fire Win', points: 5, type: 'check' },
+  { key: 'juryVotes', label: 'Runner-up Jury Votes', short: 'Jury Votes', points: 3, type: 'number' },
+  { key: 'soleSurvivor', label: 'Sole Survivor', short: 'Winner', points: 20, type: 'check' },
+  { key: 'iconic', label: 'Most Iconic (voted)', short: 'Iconic', points: 7, type: 'check' },
+];
+
+// State
+let state = {
+  players: [],
+  settings: { draftRounds: 3, maxPicks: 2, mergeTrigger: 9, scoringStartEp: 2 },
+  castaways: DEFAULT_CASTAWAYS.map((c, i) => ({
+    ...c, id: i, pickedBy: [], status: 'active', eliminatedEp: null, mergePickedBy: []
+  })),
+  draftOrder: [],
+  draftPicks: [],
+  draftStarted: false,
+  draftComplete: false,
+  mergeDraftOrder: [],
+  mergePicks: [],
+  mergeDraftStarted: false,
+  mergeDraftComplete: false,
+  episodes: {},
+  propBets: {},
+  actualFirstBoot: null,
+  currentEpisode: 2,
+  powerRankings: {},  // { episodeNum: "text" }
+};
+
+// ===================== INITIALIZATION =====================
+function init() {
+  loadState();
+  if (state.players.length === 0) {
+    state.players = [
+      { name: 'Player 1', color: PLAYER_COLORS[0] },
+      { name: 'Player 2', color: PLAYER_COLORS[1] },
+      { name: 'Player 3', color: PLAYER_COLORS[2] },
+      { name: 'Player 4', color: PLAYER_COLORS[3] },
+      { name: 'Player 5', color: PLAYER_COLORS[4] },
+      { name: 'Player 6', color: PLAYER_COLORS[5] },
+      { name: 'Player 7', color: PLAYER_COLORS[6] },
+    ];
+  }
+  renderAll();
+  setupNav();
+}
+
+function setupNav() {
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('page-' + tab.dataset.page).classList.add('active');
+      renderAll();
+    });
+  });
+}
+
+function renderAll() {
+  renderPlayerList();
+  renderDraftOrderPreview();
+  renderPropBet();
+  renderDraft();
+  renderLeaderboard();
+  renderBumpChart();
+  renderEpHighlights();
+  renderPowerRankings();
+  renderTimeline();
+  renderH2H();
+  renderScoring();
+  renderCast();
+  renderMergeDraft();
+}
+
+// ===================== STATE PERSISTENCE =====================
+function saveState() {
+  try {
+    const data = JSON.stringify(state);
+    // Save to a downloadable format - state is preserved in memory during session
+  } catch(e) {}
+}
+
+function loadState() {
+  // State loads from imported JSON files
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'survivor-50-fantasy-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      state = JSON.parse(e.target.result);
+      renderAll();
+      alert('Data imported successfully!');
+    } catch(err) {
+      alert('Error importing data: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ===================== SETUP =====================
+function renderPlayerList() {
+  const container = document.getElementById('playerList');
+  container.innerHTML = state.players.map((p, i) => `
+    <div class="player-input-row">
+      <input type="color" value="${p.color}" class="player-color-dot"
+        onchange="updatePlayerColor(${i}, this.value)" style="width:32px;height:32px;padding:0;border:none;cursor:pointer">
+      <input type="text" value="${p.name}" placeholder="Player name"
+        onchange="updatePlayerName(${i}, this.value)">
+      <button class="remove-player" onclick="removePlayer(${i})" title="Remove">&times;</button>
+    </div>
+  `).join('');
+}
+
+function addPlayer() {
+  const idx = state.players.length;
+  state.players.push({ name: 'Player ' + (idx + 1), color: PLAYER_COLORS[idx % PLAYER_COLORS.length] });
+  renderPlayerList();
+}
+
+function removePlayer(i) {
+  if (state.players.length <= 2) return alert('Need at least 2 players');
+  state.players.splice(i, 1);
+  renderPlayerList();
+}
+
+function updatePlayerName(i, name) { state.players[i].name = name; }
+function updatePlayerColor(i, color) { state.players[i].color = color; }
+
+function saveDraftSettings() {
+  state.settings.draftRounds = parseInt(document.getElementById('draftRounds').value);
+  state.settings.maxPicks = parseInt(document.getElementById('maxPicks').value);
+  state.settings.mergeTrigger = parseInt(document.getElementById('mergeTrigger').value);
+  state.settings.scoringStartEp = parseInt(document.getElementById('scoringStartEp').value);
+  alert('Settings saved!');
+}
+
+function randomizeDraftOrder() {
+  const indices = state.players.map((_, i) => i);
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+  state.draftOrder = indices;
+  renderDraftOrderPreview();
+  renderDraft();
+}
+
+function renderDraftOrderPreview() {
+  const container = document.getElementById('draftOrderPreview');
+  if (state.draftOrder.length === 0) {
+    container.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Click "Randomize Order" to set the draft order.</p>';
+    return;
+  }
+  const rounds = state.settings.draftRounds;
+  let html = '';
+  for (let r = 0; r < rounds; r++) {
+    const order = r % 2 === 0 ? [...state.draftOrder] : [...state.draftOrder].reverse();
+    html += `<div style="margin-bottom:0.5rem"><strong style="color:var(--text-secondary);font-size:0.8rem">Round ${r+1}:</strong> `;
+    html += order.map(idx => {
+      const p = state.players[idx];
+      return `<span style="background:${p.color};color:#fff;padding:2px 8px;border-radius:4px;font-size:0.8rem;font-weight:600;margin-right:3px">${p.name}</span>`;
+    }).join(' → ');
+    html += '</div>';
+  }
+  container.innerHTML = html;
+}
+
+// ===================== PROP BET =====================
+function renderPropBet() {
+  const grid = document.getElementById('propBetGrid');
+  const select = document.getElementById('actualFirstBoot');
+
+  grid.innerHTML = state.players.map((p, i) => {
+    const pick = state.propBets[i] || '';
+    const result = getFirstBootResult(i);
+    return `
+      <div class="prop-bet-card" style="border-left:4px solid ${p.color}">
+        <div class="player-name" style="color:${p.color}">${p.name}</div>
+        <select onchange="setPropBet(${i}, this.value)">
+          <option value="">-- Pick --</option>
+          ${state.castaways.map(c => `<option value="${c.id}" ${pick == c.id ? 'selected' : ''}>${c.shortName}</option>`).join('')}
+        </select>
+        ${result}
+      </div>
+    `;
+  }).join('');
+
+  // Populate actual first boot select
+  select.innerHTML = '<option value="">-- Not yet revealed --</option>' +
+    state.castaways.map(c => `<option value="${c.id}" ${state.actualFirstBoot == c.id ? 'selected' : ''}>${c.shortName}</option>`).join('');
+}
+
+function setPropBet(playerIdx, castawayId) {
+  state.propBets[playerIdx] = castawayId;
+}
+
+function resolveFirstBoot() {
+  const val = document.getElementById('actualFirstBoot').value;
+  state.actualFirstBoot = val ? parseInt(val) : null;
+  renderPropBet();
+  renderLeaderboard();
+}
+
+function getFirstBootResult(playerIdx) {
+  if (state.actualFirstBoot === null) return '';
+  const pick = state.propBets[playerIdx];
+  if (!pick && pick !== 0) return '<div class="prop-bet-result prop-bet-wrong">No pick made</div>';
+  if (parseInt(pick) === state.actualFirstBoot) {
+    return '<div class="prop-bet-result prop-bet-correct">CORRECT! +5 pts</div>';
+  }
+  return '<div class="prop-bet-result prop-bet-wrong">Wrong</div>';
+}
+
+function getPropBetBonus(playerIdx) {
+  if (state.actualFirstBoot === null) return 0;
+  const pick = state.propBets[playerIdx];
+  return (parseInt(pick) === state.actualFirstBoot) ? 5 : 0;
+}
+
+// ===================== DRAFT =====================
+function getSnakeDraftOrder() {
+  const order = [];
+  for (let r = 0; r < state.settings.draftRounds; r++) {
+    const roundOrder = r % 2 === 0 ? [...state.draftOrder] : [...state.draftOrder].reverse();
+    roundOrder.forEach(idx => order.push({ playerIdx: idx, round: r + 1 }));
+  }
+  return order;
+}
+
+function startDraft() {
+  if (state.draftOrder.length === 0) { alert('Please randomize the draft order first!'); return; }
+  state.draftStarted = true;
+  state.draftPicks = [];
+  state.castaways.forEach(c => { c.pickedBy = []; });
+  renderDraft();
+}
+
+function renderDraft() {
+  const snakeOrder = getSnakeDraftOrder();
+  const currentPick = state.draftPicks.length;
+  const isDone = currentPick >= snakeOrder.length;
+
+  if (isDone && state.draftStarted) state.draftComplete = true;
+
+  const startBtn = document.getElementById('startDraftBtn');
+  const undoBtn = document.getElementById('undoBtn');
+  const currentPickPanel = document.getElementById('draftCurrentPick');
+  const currentPlayerEl = document.getElementById('draftCurrentPlayer');
+  const pickInfoEl = document.getElementById('draftPickInfo');
+
+  if (!state.draftStarted) {
+    currentPlayerEl.textContent = '—';
+    pickInfoEl.textContent = 'Draft not started';
+    currentPickPanel.style.borderColor = 'rgba(255,255,255,0.15)';
+    currentPickPanel.style.animation = 'none';
+    startBtn.style.display = '';
+    undoBtn.style.display = 'none';
+  } else if (isDone) {
+    currentPlayerEl.innerHTML = 'Draft Complete!';
+    currentPlayerEl.style.color = '#4caf50';
+    pickInfoEl.textContent = state.draftPicks.length + ' picks made';
+    currentPickPanel.querySelector('.on-the-clock').textContent = '';
+    currentPickPanel.style.borderColor = '#4caf50';
+    currentPickPanel.style.animation = 'none';
+    startBtn.style.display = 'none';
+    undoBtn.style.display = state.draftPicks.length > 0 ? '' : 'none';
+    document.getElementById('draftResultsWrap').style.display = '';
+  } else {
+    const current = snakeOrder[currentPick];
+    const p = state.players[current.playerIdx];
+    currentPickPanel.querySelector('.on-the-clock').textContent = 'ON THE CLOCK';
+    currentPlayerEl.textContent = p.name;
+    currentPlayerEl.style.color = p.color;
+    pickInfoEl.textContent = `Round ${current.round} · Pick #${currentPick + 1} of ${snakeOrder.length}`;
+    currentPickPanel.style.borderColor = p.color;
+    currentPickPanel.style.animation = 'fireGlow 2s ease infinite';
+    startBtn.style.display = 'none';
+    undoBtn.style.display = state.draftPicks.length > 0 ? '' : 'none';
+  }
+
+  // Draft order sidebar - shows full snake with picks filled in
+  const orderDisplay = document.getElementById('draftOrderDisplay');
+  orderDisplay.innerHTML = snakeOrder.map((slot, i) => {
+    const p = state.players[slot.playerIdx];
+    const isDoneSlot = i < currentPick;
+    const isCurrent = i === currentPick;
+    let cls = isDoneSlot ? 'done' : (isCurrent ? 'current' : '');
+    const pickName = isDoneSlot && state.draftPicks[i]
+      ? state.castaways[state.draftPicks[i].castawayId].shortName
+      : '';
+    return `<div class="draft-order-slot ${cls}" style="background:${p.color}${isCurrent ? '60' : '25'};border:2px solid ${p.color};color:${isCurrent ? '#fff' : p.color}">
+      <span>${i+1}. ${p.name}</span>
+      <span class="slot-pick-name">${pickName}</span>
+    </div>`;
+  }).join('');
+
+  // Main pick area - big photo cards
+  const pickArea = document.getElementById('draftPickArea');
+  const tvLayout = document.getElementById('draftTvLayout');
+  const revealContainer = document.getElementById('draftTribesRevealContainer');
+  if (!state.draftStarted) {
+    tvLayout.style.display = '';
+    revealContainer.style.display = 'none';
+    pickArea.innerHTML = '<div style="color:var(--text-secondary);padding:2rem;text-align:center;font-size:1.2rem">Click "Start Draft" to begin</div>';
+  } else if (isDone) {
+    // Hide the draft grid, show tribes reveal in its own full-width container
+    tvLayout.style.display = 'none';
+    revealContainer.style.display = '';
+    renderDraftTribesReveal(revealContainer);
+  } else {
+    tvLayout.style.display = '';
+    revealContainer.style.display = 'none';
+    // Sort: available castaways first, off-the-board at the end
+    const sorted = [...state.castaways].sort((a, b) => {
+      const aOff = a.pickedBy.length >= state.settings.maxPicks ? 1 : 0;
+      const bOff = b.pickedBy.length >= state.settings.maxPicks ? 1 : 0;
+      if (aOff !== bOff) return aOff - bOff;
+      return a.id - b.id; // preserve original order within groups
+    });
+
+    // Track which castaways just went off-the-board for animation
+    const justRemoved = state._justRemovedIds || new Set();
+
+    pickArea.innerHTML = sorted.map(c => {
+      const timesPickedCount = c.pickedBy.length;
+      const disabled = timesPickedCount >= state.settings.maxPicks;
+      const isOffBoard = disabled;
+      const pickCountClass = disabled ? 'picked-max' : (timesPickedCount > 0 ? 'picked-once' : '');
+      const pickLabel = disabled ? `Off the board` : (timesPickedCount > 0 ? `Picked ${timesPickedCount}x` : '');
+      const animClass = justRemoved.has(c.id) ? ' just-removed' : (isOffBoard ? ' off-the-board' : '');
+
+      // Photo as full background, or initials fallback
+      const photoHtml = c.photo
+        ? `<img class="pick-photo" src="${c.photo}" alt="${c.shortName}" onerror="this.nextElementSibling.style.display='flex';this.style.display='none'">`
+        : '';
+      const initialsHtml = `<div class="pick-initials-bg" style="${c.photo ? 'display:none' : ''}">${c.initials}</div>`;
+
+      // Badge showing who already drafted this castaway
+      const badges = c.pickedBy.map(pi => {
+        const p = state.players[pi];
+        return `<div class="pick-drafted-badge" style="background:${p.color}">${p.name}</div>`;
+      }).join('');
+
+      return `<button class="draft-pick-btn${animClass}" ${disabled ? 'disabled' : ''} onclick="makeDraftPick(${c.id})" data-castaway-id="${c.id}">
+        ${photoHtml}
+        ${initialsHtml}
+        ${badges ? `<div class="pick-drafted-badges">${badges}</div>` : ''}
+        <div class="pick-label">
+          <div class="pick-name">${c.shortName}</div>
+          ${pickLabel ? `<div class="pick-count ${pickCountClass}">${pickLabel}</div>` : ''}
+        </div>
+      </button>`;
+    }).join('');
+
+    // Clear animation trigger after render
+    if (justRemoved.size > 0) {
+      setTimeout(() => {
+        document.querySelectorAll('.draft-pick-btn.just-removed').forEach(el => {
+          el.classList.remove('just-removed');
+          el.classList.add('off-the-board');
+        });
+        state._justRemovedIds = new Set();
+      }, 750);
+    }
+  }
+
+  // Results table
+  const tbody = document.getElementById('draftResultsTable').querySelector('tbody');
+  tbody.innerHTML = state.draftPicks.map((pick, i) => {
+    const p = state.players[pick.playerIdx];
+    const c = state.castaways[pick.castawayId];
+    return `<tr>
+      <td>${i + 1}</td>
+      <td>Round ${pick.round}</td>
+      <td style="color:${p.color};font-weight:600">${p.name}</td>
+      <td><span class="castaway-pill pill-sm" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderDraftTribesReveal(container) {
+  // Build tribes for each player
+  const tribes = state.players.map((p, pi) => {
+    const picks = state.draftPicks.filter(dp => dp.playerIdx === pi);
+    const castaways = picks.map(dp => state.castaways[dp.castawayId]);
+    return { player: p, castaways, playerIdx: pi };
+  });
+
+  // --- Draft Analysis ---
+  const analysis = analyzeDraft(tribes);
+
+  container.innerHTML = `
+    <div class="tribes-reveal">
+      <div class="tribes-reveal-header-section">
+        <div class="tribes-reveal-title">The Tribes Have Spoken</div>
+        <div class="tribes-reveal-subtitle">Season 50 Fantasy Draft Complete</div>
+      </div>
+      <div class="tribes-reveal-grid">
+        ${tribes.map((t, i) => {
+          const femaleCount = t.castaways.filter(c => c.gender === 'F').length;
+          const maleCount = t.castaways.filter(c => c.gender === 'M').length;
+          const s50Tribes = {};
+          t.castaways.forEach(c => { s50Tribes[c.s50tribe] = (s50Tribes[c.s50tribe] || 0) + 1; });
+          const tribeStr = Object.entries(s50Tribes).map(([t,n]) => {
+            const colors = { Vatu: 'var(--vatu-purple)', Kalo: 'var(--kalo-teal)', Cila: 'var(--cila-orange)' };
+            return `<span style="color:${colors[t] || '#999'}">${n} ${t}</span>`;
+          }).join(' / ');
+          return `
+          <div class="tribe-reveal-card" style="--tribe-color: ${t.player.color}; animation-delay: ${i * 0.12}s">
+            <div class="tribe-card-header" style="background: linear-gradient(135deg, ${t.player.color}, ${t.player.color}dd)">
+              <div class="tribe-card-name">${t.player.name}</div>
+              <div class="tribe-card-meta">${femaleCount}F / ${maleCount}M &middot; ${tribeStr}</div>
+            </div>
+            <div class="tribe-card-members">
+              ${t.castaways.map(c => `
+                <div class="tribe-card-member">
+                  <div class="member-photo-wrap">
+                    ${c.photo
+                      ? `<img src="${c.photo}" alt="${c.shortName}" class="member-photo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+                      : ''}
+                    <div class="member-initials" style="${c.photo ? 'display:none' : ''}">${c.initials}</div>
+                  </div>
+                  <div class="member-info">
+                    <div class="member-name" style="cursor:pointer" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}</div>
+                    <div class="member-seasons">S${c.seasons.split(',')[0].trim()}</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `}).join('')}
+      </div>
+      <div class="draft-analysis">
+        <div class="analysis-title">Draft Superlatives</div>
+        <div class="analysis-cards">
+          ${analysis.map((a, i) => `
+            <div class="analysis-card" style="animation-delay: ${0.5 + i * 0.15}s">
+              <div class="analysis-icon">${a.icon}</div>
+              <div class="analysis-label">${a.label}</div>
+              <div class="analysis-winner" style="color: ${a.color}">${a.winner}</div>
+              <div class="analysis-detail">${a.detail}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function analyzeDraft(tribes) {
+  const results = [];
+
+  // Most similar tribes (Jaccard similarity on castaway sets)
+  let maxSimilarity = -1, simPair = [];
+  for (let i = 0; i < tribes.length; i++) {
+    for (let j = i + 1; j < tribes.length; j++) {
+      const setA = new Set(tribes[i].castaways.map(c => c.id));
+      const setB = new Set(tribes[j].castaways.map(c => c.id));
+      const intersection = [...setA].filter(x => setB.has(x)).length;
+      const union = new Set([...setA, ...setB]).size;
+      const sim = union > 0 ? intersection / union : 0;
+      if (sim > maxSimilarity) {
+        maxSimilarity = sim;
+        simPair = [tribes[i], tribes[j]];
+      }
+    }
+  }
+  if (simPair.length === 2) {
+    const shared = simPair[0].castaways.filter(c =>
+      simPair[1].castaways.some(c2 => c2.id === c.id)
+    ).map(c => c.shortName).join(', ');
+    results.push({
+      icon: '\u{1F91D}',
+      label: 'Most Similar Tribes',
+      winner: `${simPair[0].player.name} & ${simPair[1].player.name}`,
+      color: simPair[0].player.color,
+      detail: shared ? `Share: ${shared}` : 'No overlap but closest picks'
+    });
+  }
+
+  // Most unique tribe (least overlap with all others)
+  let mostUnique = null, minOverlap = Infinity;
+  tribes.forEach(t => {
+    const myIds = new Set(t.castaways.map(c => c.id));
+    let overlap = 0;
+    tribes.forEach(t2 => {
+      if (t2.playerIdx !== t.playerIdx) {
+        t2.castaways.forEach(c => { if (myIds.has(c.id)) overlap++; });
+      }
+    });
+    if (overlap < minOverlap) { minOverlap = overlap; mostUnique = t; }
+  });
+  if (mostUnique) {
+    const uniquePicks = mostUnique.castaways.filter(c =>
+      c.pickedBy.length === 1
+    ).map(c => c.shortName);
+    results.push({
+      icon: '\u{1F3AF}',
+      label: 'Most Unique Tribe',
+      winner: mostUnique.player.name,
+      color: mostUnique.player.color,
+      detail: uniquePicks.length > 0 ? `Exclusive: ${uniquePicks.join(', ')}` : `Only ${minOverlap} shared picks`
+    });
+  }
+
+  // Most female tribe
+  let maxFemale = -1, femaleTribe = null;
+  tribes.forEach(t => {
+    const f = t.castaways.filter(c => c.gender === 'F').length;
+    if (f > maxFemale) { maxFemale = f; femaleTribe = t; }
+  });
+  if (femaleTribe) {
+    const pct = Math.round((maxFemale / femaleTribe.castaways.length) * 100);
+    results.push({
+      icon: '\u{1F451}',
+      label: 'Queens Tribe',
+      winner: femaleTribe.player.name,
+      color: femaleTribe.player.color,
+      detail: `${maxFemale} women (${pct}% of tribe)`
+    });
+  }
+
+  // Most male tribe
+  let maxMale = -1, maleTribe = null;
+  tribes.forEach(t => {
+    const m = t.castaways.filter(c => c.gender === 'M').length;
+    if (m > maxMale) { maxMale = m; maleTribe = t; }
+  });
+  if (maleTribe) {
+    const pct = Math.round((maxMale / maleTribe.castaways.length) * 100);
+    results.push({
+      icon: '\u{1F525}',
+      label: 'Kings Tribe',
+      winner: maleTribe.player.name,
+      color: maleTribe.player.color,
+      detail: `${maxMale} men (${pct}% of tribe)`
+    });
+  }
+
+  // Most S50 tribe diversity (most different starting tribes represented)
+  let maxTribes = 0, diverseTribe = null;
+  tribes.forEach(t => {
+    const s50t = new Set(t.castaways.map(c => c.s50tribe));
+    if (s50t.size > maxTribes) { maxTribes = s50t.size; diverseTribe = t; }
+  });
+  if (diverseTribe && maxTribes > 1) {
+    results.push({
+      icon: '\u{1F30A}',
+      label: 'Cross-Tribal',
+      winner: diverseTribe.player.name,
+      color: diverseTribe.player.color,
+      detail: `Drafted from ${maxTribes} different S50 tribes`
+    });
+  }
+
+  return results;
+}
+
+function makeDraftPick(castawayId) {
+  const snakeOrder = getSnakeDraftOrder();
+  const currentPick = state.draftPicks.length;
+  if (currentPick >= snakeOrder.length) return;
+
+  const slot = snakeOrder[currentPick];
+  const castaway = state.castaways[castawayId];
+
+  if (castaway.pickedBy.length >= state.settings.maxPicks) return;
+
+  castaway.pickedBy.push(slot.playerIdx);
+  state.draftPicks.push({ playerIdx: slot.playerIdx, castawayId, round: slot.round });
+
+  // Track if this pick just pushed a castaway off the board (for animation)
+  if (castaway.pickedBy.length >= state.settings.maxPicks) {
+    if (!state._justRemovedIds) state._justRemovedIds = new Set();
+    state._justRemovedIds.add(castawayId);
+  }
+
+  // Show pick announcement
+  showPickOverlay(currentPick + 1, state.players[slot.playerIdx], castaway);
+  renderDraft();
+}
+
+function showPickOverlay(pickNum, player, castaway) {
+  const overlay = document.getElementById('pickOverlay');
+  document.getElementById('pickNumber').textContent = '#' + pickNum;
+  document.getElementById('pickPlayerName').textContent = player.name;
+  document.getElementById('pickPlayerName').style.color = player.color;
+  document.getElementById('pickCastawayName').textContent = castaway.shortName;
+
+  // Show castaway photo in overlay
+  const photoEl = document.getElementById('pickCastawayPhoto');
+  if (castaway.photo) {
+    photoEl.src = castaway.photo;
+    photoEl.style.display = '';
+    photoEl.onerror = () => { photoEl.style.display = 'none'; };
+  } else {
+    photoEl.style.display = 'none';
+  }
+
+  // Show existing tribe members for this player
+  const tribeCtx = document.getElementById('pickTribeContext');
+  const playerIdx = state.players.indexOf(player);
+  const existingPicks = state.draftPicks.filter(dp => dp.playerIdx === playerIdx && dp.castawayId !== castaway.id);
+  if (existingPicks.length > 0) {
+    const memberHtml = existingPicks.map(dp => {
+      const c = state.castaways[dp.castawayId];
+      const photoTag = c.photo ? `<img src="${c.photo}" alt="${c.shortName}" onerror="this.style.display='none'">` : '';
+      return `<div class="existing-member">${photoTag}<span>${c.shortName}</span></div>`;
+    }).join('');
+    tribeCtx.innerHTML = `<div class="tribe-context-label">Joins the tribe with</div>${memberHtml}`;
+    tribeCtx.style.display = '';
+  } else {
+    tribeCtx.innerHTML = '';
+    tribeCtx.style.display = 'none';
+  }
+
+  overlay.classList.add('show');
+
+  // Auto-dismiss after 4 seconds (a bit longer to see tribe context)
+  clearTimeout(window._pickTimeout);
+  window._pickTimeout = setTimeout(() => dismissPickOverlay(), 4000);
+}
+
+function dismissPickOverlay() {
+  document.getElementById('pickOverlay').classList.remove('show');
+  clearTimeout(window._pickTimeout);
+}
+
+function undoLastPick() {
+  if (state.draftPicks.length === 0) return;
+  const last = state.draftPicks.pop();
+  const castaway = state.castaways[last.castawayId];
+  const idx = castaway.pickedBy.lastIndexOf(last.playerIdx);
+  if (idx !== -1) castaway.pickedBy.splice(idx, 1);
+  state.draftComplete = false;
+  renderDraft();
+}
+
+// ===================== LEADERBOARD =====================
+function getPlayerCastaways(playerIdx) {
+  return state.castaways.filter(c => c.pickedBy.includes(playerIdx));
+}
+
+function getPlayerMergePick(playerIdx) {
+  return state.castaways.filter(c => c.mergePickedBy && c.mergePickedBy.includes(playerIdx));
+}
+
+function getCastawayEpisodePoints(castawayId, epNum) {
+  const epData = state.episodes[epNum];
+  if (!epData) return 0;
+  const scores = epData[castawayId];
+  if (!scores) return 0;
+  let total = 0;
+  SCORING_CATEGORIES.forEach(cat => {
+    if (cat.type === 'check' && scores[cat.key]) total += cat.points;
+    if (cat.type === 'number' && scores[cat.key]) total += scores[cat.key] * cat.points;
+  });
+  return total;
+}
+
+function getCastawayTotalPoints(castawayId) {
+  let total = 0;
+  for (let ep = state.settings.scoringStartEp; ep <= 20; ep++) {
+    total += getCastawayEpisodePoints(castawayId, ep);
+  }
+  return total;
+}
+
+function getPlayerTotalPoints(playerIdx) {
+  let total = 0;
+  // Points from drafted castaways
+  const castaways = getPlayerCastaways(playerIdx);
+  castaways.forEach(c => { total += getCastawayTotalPoints(c.id); });
+
+  // Points from merge pick (only from merge episode onwards)
+  const mergePicks = getPlayerMergePick(playerIdx);
+  mergePicks.forEach(c => {
+    // Find which episode this merge pick was made (approximate: when merge trigger hit)
+    // For simplicity, count all points from the castaway but only post-merge episodes
+    for (let ep = state.settings.scoringStartEp; ep <= 20; ep++) {
+      // Only count merge pick points if they were drafted via merge
+      if (!castaways.find(dc => dc.id === c.id)) {
+        total += getCastawayEpisodePoints(c.id, ep);
+      }
+    }
+  });
+
+  // Prop bet bonus
+  total += getPropBetBonus(playerIdx);
+
+  return total;
+}
+
+function renderLeaderboard() {
+  const container = document.getElementById('leaderboardContainer');
+
+  const standings = state.players.map((p, i) => ({
+    playerIdx: i,
+    name: p.name,
+    color: p.color,
+    points: getPlayerTotalPoints(i),
+    castawayObjs: getPlayerCastaways(i),
+    mergeObjs: getPlayerMergePick(i),
+    propBonus: getPropBetBonus(i),
+  })).sort((a, b) => b.points - a.points);
+
+  // Get win probabilities
+  const probs = calcWinProbabilities();
+  const probMap = {};
+  probs.forEach(p => { probMap[p.playerIdx] = p.winProb; });
+
+  container.innerHTML = standings.map((s, rank) => {
+    const winPct = probMap[s.playerIdx] || 0;
+
+    // Build castaway pills (hoverable)
+    const pills = s.castawayObjs.map(c => {
+      const isElim = c.status === 'eliminated';
+      return `<span class="castaway-pill${isElim ? ' elim' : ''}" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}</span>`;
+    }).join('');
+
+    const mergePills = s.mergeObjs.filter(c => !s.castawayObjs.find(dc => dc.id === c.id)).map(c => {
+      const isElim = c.status === 'eliminated';
+      return `<span class="castaway-pill${isElim ? ' elim' : ''}" style="border:1px solid var(--ocean-blue)" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}</span>`;
+    }).join('');
+
+    const propLabel = s.propBonus > 0 ? '<span style="color:#4caf50;font-size:0.65rem;font-weight:700">+5 prop</span>' : '';
+
+    return `
+    <div class="leaderboard-row animate-in" style="border-left-color:${s.color};animation-delay:${rank * 0.04}s">
+      <div class="rank ${rank === 0 ? 'first' : ''}">${rank + 1}</div>
+      <div class="player-info">
+        <div class="player-name-row">
+          <div class="player-name" style="color:${s.color}">${s.name}</div>
+          <div class="score" style="color:${s.color}">${s.points}</div>${winPct > 0 ? `<span class="win-prob" style="color:${s.color}">${winPct}% win</span>` : ''}
+        </div>
+        <div class="player-castaways">
+          ${pills}${mergePills}${propLabel}
+        </div>
+      </div>
+    </div>
+  `}).join('');
+
+  // Tribe cards
+  const tribeContainer = document.getElementById('tribeCards');
+  tribeContainer.innerHTML = state.players.map((p, i) => {
+    const castaways = getPlayerCastaways(i);
+    const mergePicks = getPlayerMergePick(i);
+    const allMembers = [...castaways.map(c => ({...c, isMerge: false}))];
+    mergePicks.forEach(c => {
+      if (!castaways.find(dc => dc.id === c.id)) {
+        allMembers.push({...c, isMerge: true});
+      }
+    });
+
+    const memberHtml = allMembers.map(c => {
+      const pts = getCastawayTotalPoints(c.id);
+      const isElim = c.status === 'eliminated';
+      return `<div class="tribe-member">
+        <span class="castaway-pill${isElim ? ' elim' : ''}" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}${c.isMerge ? ' <span class="merge-label">M</span>' : ''}${isElim ? ' (Ep ' + c.eliminatedEp + ')' : ''}</span>
+        <span class="member-points">${pts}</span>
+      </div>`;
+    }).join('');
+
+    const totalPts = getPlayerTotalPoints(i);
+
+    return `<div class="tribe-card" style="border-left-color:${p.color}">
+      <div class="tribe-player" style="color:${p.color}">${p.name} <span style="float:right;font-size:1.5rem;color:var(--torch-gold)">${totalPts}</span></div>
+      ${memberHtml || '<div style="color:var(--text-secondary);font-size:0.85rem">No castaways drafted yet</div>'}
+    </div>`;
+  }).join('');
+}
+
+// ===================== SCORING =====================
+function renderScoring() {
+  // Episode buttons
+  const epSelect = document.getElementById('episodeSelect');
+  let epHtml = '';
+  for (let ep = state.settings.scoringStartEp; ep <= 16; ep++) {
+    const hasData = state.episodes[ep] && Object.keys(state.episodes[ep]).length > 0;
+    const isActive = ep === state.currentEpisode;
+    epHtml += `<button class="ep-btn ${isActive ? 'active' : ''} ${hasData ? 'has-data' : ''}"
+      onclick="selectEpisode(${ep})">Ep ${ep}</button>`;
+  }
+  // Add Finale
+  epHtml += `<button class="ep-btn ${state.currentEpisode === 99 ? 'active' : ''} ${state.episodes[99] ? 'has-data' : ''}"
+    onclick="selectEpisode(99)">Finale</button>`;
+  epSelect.innerHTML = epHtml;
+
+  // Scoring grid
+  const ep = state.currentEpisode;
+  const epData = state.episodes[ep] || {};
+
+  const thead = document.getElementById('scoringGrid').querySelector('thead');
+  const tbody = document.getElementById('scoringGrid').querySelector('tbody');
+
+  thead.innerHTML = `<tr>
+    <th>Castaway</th>
+    ${SCORING_CATEGORIES.map(cat => `<th title="${cat.label} (${cat.points > 0 ? '+' : ''}${cat.points})">${cat.short}<br><span style="font-weight:400;font-size:0.6rem">(${cat.points > 0 ? '+' : ''}${cat.points})</span></th>`).join('')}
+    <th>Ep Total</th>
+  </tr>`;
+
+  const activeCastaways = state.castaways.filter(c => {
+    if (c.eliminatedEp && c.eliminatedEp < ep) return false;
+    return true;
+  });
+
+  const eliminatedBefore = state.castaways.filter(c => c.eliminatedEp && c.eliminatedEp < ep);
+
+  tbody.innerHTML = activeCastaways.map(c => {
+    const scores = epData[c.id] || {};
+    let epTotal = 0;
+
+    const cells = SCORING_CATEGORIES.map(cat => {
+      if (cat.type === 'check') {
+        const checked = scores[cat.key] ? 'checked' : '';
+        if (scores[cat.key]) epTotal += cat.points;
+        return `<td><input type="checkbox" ${checked} onchange="updateScore(${ep}, ${c.id}, '${cat.key}', this.checked)"></td>`;
+      } else {
+        const val = scores[cat.key] || 0;
+        epTotal += val * cat.points;
+        return `<td><input type="number" value="${val}" min="0" max="20" style="width:40px;text-align:center;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:var(--text-primary);font-size:0.85rem" onchange="updateScore(${ep}, ${c.id}, '${cat.key}', parseInt(this.value)||0)"></td>`;
+      }
+    }).join('');
+
+    const draftedBy = c.pickedBy.map(pi => `<span style="color:${state.players[pi]?.color};font-size:0.7rem">${state.players[pi]?.name}</span>`).join(', ');
+
+    return `<tr>
+      <td>
+        <span class="castaway-pill" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()" style="font-weight:700;font-size:0.8rem">${c.shortName}</span>
+        <div style="font-size:0.65rem;color:var(--text-secondary)">${draftedBy || 'Undrafted'}</div>
+      </td>
+      ${cells}
+      <td class="ep-total">${epTotal}</td>
+    </tr>`;
+  }).join('') +
+  (eliminatedBefore.length > 0 ? `<tr><td colspan="${SCORING_CATEGORIES.length + 2}" style="padding:0.5rem;color:var(--text-secondary);font-size:0.8rem;font-style:italic">Previously eliminated: ${eliminatedBefore.map(c => `<span class="castaway-pill elim pill-sm" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}</span>`).join(' ')}</td></tr>` : '');
+}
+
+function selectEpisode(ep) {
+  state.currentEpisode = ep;
+  renderScoring();
+}
+
+function updateScore(ep, castawayId, key, value) {
+  if (!state.episodes[ep]) state.episodes[ep] = {};
+  if (!state.episodes[ep][castawayId]) state.episodes[ep][castawayId] = {};
+  state.episodes[ep][castawayId][key] = value;
+}
+
+function saveEpisodeScoring() {
+  const ep = state.currentEpisode;
+  const epData = state.episodes[ep] || {};
+
+  // Auto-mark quits
+  state.castaways.forEach(c => {
+    const scores = epData[c.id] || {};
+    if (scores.quit && !c.eliminatedEp) {
+      c.eliminatedEp = ep;
+      c.status = 'eliminated';
+    }
+  });
+
+  // Show elimination dialog
+  showEliminationDialog(ep);
+}
+
+let _elimSelected = new Set();
+let _elimEpisode = null;
+
+function showEliminationDialog(ep) {
+  _elimEpisode = ep;
+  _elimSelected = new Set();
+  const dialog = document.getElementById('elimDialog');
+  const container = document.getElementById('elimCastaways');
+
+  const activeCastaways = state.castaways.filter(c => c.status === 'active');
+  container.innerHTML = activeCastaways.map(c =>
+    `<button class="castaway-elim-btn" data-id="${c.id}" onclick="toggleElimSelect(${c.id}, this)">${c.shortName}</button>`
+  ).join('');
+
+  dialog.classList.add('show');
+}
+
+function toggleElimSelect(id, btn) {
+  if (_elimSelected.has(id)) {
+    _elimSelected.delete(id);
+    btn.classList.remove('selected');
+  } else {
+    _elimSelected.add(id);
+    btn.classList.add('selected');
+  }
+}
+
+function closeElimDialog(confirm) {
+  if (confirm && _elimSelected.size > 0) {
+    _elimSelected.forEach(id => {
+      const c = state.castaways[id];
+      if (!c.eliminatedEp) {
+        c.eliminatedEp = _elimEpisode;
+        c.status = 'eliminated';
+      }
+    });
+  }
+  document.getElementById('elimDialog').classList.remove('show');
+  renderAll();
+}
+
+// ===================== CAST PAGE =====================
+function renderCast() {
+  const grid = document.getElementById('castGrid');
+  grid.innerHTML = state.castaways.map(c => {
+    const totalPts = getCastawayTotalPoints(c.id);
+    // Cast page only dims eliminated players — draft availability shown via badges only
+    const statusClass = c.status === 'eliminated' ? 'eliminated' :
+      (c.pickedBy.length > 0 ? 'picked-once' : 'available');
+
+    const draftedBy = c.pickedBy.map(pi =>
+      `<span class="pick-badge" style="background:${state.players[pi]?.color}">${state.players[pi]?.name}</span>`
+    ).join('');
+
+    const mergeBy = (c.mergePickedBy || []).map(pi =>
+      `<span class="pick-badge" style="background:${state.players[pi]?.color};border:1px solid var(--ocean-blue)">${state.players[pi]?.name} (M)</span>`
+    ).join('');
+
+    const statusBadge = c.status === 'eliminated' ?
+      `<span class="status-badge status-eliminated">Out Ep ${c.eliminatedEp}</span>` :
+      `<span class="status-badge status-active">Active</span>`;
+
+    const avatarContent = c.photo
+      ? `<img src="${c.photo}" alt="${c.shortName}" onerror="this.parentNode.innerHTML='${c.initials}'">`
+      : c.initials;
+
+    const tribeColors = { Vatu: 'var(--vatu-purple)', Kalo: 'var(--kalo-teal)', Cila: 'var(--cila-orange)' };
+    const tribeColor = tribeColors[c.s50tribe] || 'transparent';
+
+    return `
+      <div class="castaway-card ${statusClass}" style="border-top: 3px solid ${tribeColor}">
+        ${totalPts > 0 ? `<div class="points-badge">${totalPts} pts</div>` : ''}
+        <div class="avatar">${avatarContent}</div>
+        <div class="name" style="cursor:pointer" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}</div>
+        <div class="season-info">S${c.seasons}</div>
+        <div style="font-size:0.6rem;color:${tribeColor};font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:0.2rem">${c.s50tribe || ''}</div>
+        ${statusBadge}
+        <div class="pick-badges">${draftedBy}${mergeBy}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ===================== MERGE DRAFT =====================
+function getMergeSnakeOrder() {
+  // Reverse leaderboard order (last place picks first)
+  const standings = state.players.map((p, i) => ({
+    playerIdx: i,
+    points: getPlayerTotalPoints(i),
+  })).sort((a, b) => a.points - b.points); // ascending = last place first
+
+  return standings.map(s => s.playerIdx);
+}
+
+function startMergeDraft() {
+  state.mergeDraftOrder = getMergeSnakeOrder();
+  state.mergeDraftStarted = true;
+  state.mergePicks = [];
+  renderMergeDraft();
+}
+
+function renderMergeDraft() {
+  const order = state.mergeDraftOrder;
+  const currentPick = state.mergePicks.length;
+  const isDone = currentPick >= order.length;
+
+  if (isDone && state.mergeDraftStarted) state.mergeDraftComplete = true;
+
+  const statusEl = document.getElementById('mergeStatus');
+  const startBtn = document.getElementById('startMergeBtn');
+  const undoBtn = document.getElementById('undoMergeBtn');
+
+  if (!state.mergeDraftStarted) {
+    statusEl.textContent = 'Merge draft not started';
+    startBtn.style.display = '';
+    undoBtn.style.display = 'none';
+  } else if (isDone) {
+    statusEl.innerHTML = '<span style="color:#4caf50">Merge Draft Complete!</span>';
+    startBtn.style.display = 'none';
+    undoBtn.style.display = state.mergePicks.length > 0 ? '' : 'none';
+  } else {
+    const p = state.players[order[currentPick]];
+    statusEl.innerHTML = `<span style="color:${p.color};font-weight:700">${p.name}</span>'s merge pick`;
+    startBtn.style.display = 'none';
+    undoBtn.style.display = state.mergePicks.length > 0 ? '' : 'none';
+  }
+
+  // Order display
+  const orderDisplay = document.getElementById('mergeDraftOrder');
+  orderDisplay.innerHTML = order.map((pIdx, i) => {
+    const p = state.players[pIdx];
+    let cls = i < currentPick ? 'done' : (i === currentPick ? 'current' : '');
+    return `<div class="draft-order-slot ${cls}" style="background:${p.color}40;border:2px solid ${p.color};color:${p.color}">${p.name}</div>`;
+  }).join('');
+
+  // Pick area - only active castaways
+  const pickArea = document.getElementById('mergePickArea');
+  if (!state.mergeDraftStarted || isDone) {
+    pickArea.innerHTML = '';
+  } else {
+    const available = state.castaways.filter(c => c.status === 'active');
+    pickArea.innerHTML = available.map(c => {
+      const photoHtml = c.photo
+        ? `<img class="pick-photo" src="${c.photo}" alt="${c.shortName}" onerror="this.nextElementSibling.style.display='flex';this.style.display='none'">`
+        : '';
+      const initialsHtml = `<div class="pick-initials-bg" style="${c.photo ? 'display:none' : ''}">${c.initials}</div>`;
+      return `<button class="draft-pick-btn" onclick="makeMergePick(${c.id})">
+        ${photoHtml}
+        ${initialsHtml}
+        <div class="pick-label">
+          <div class="pick-name">${c.shortName}</div>
+        </div>
+      </button>`;
+    }).join('');
+  }
+
+  // Results
+  const tbody = document.getElementById('mergeResultsTable').querySelector('tbody');
+  tbody.innerHTML = state.mergePicks.map((pick, i) => {
+    const p = state.players[pick.playerIdx];
+    const c = state.castaways[pick.castawayId];
+    return `<tr>
+      <td>${i + 1}</td>
+      <td style="color:${p.color};font-weight:600">${p.name}</td>
+      <td><span class="castaway-pill pill-sm" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function makeMergePick(castawayId) {
+  const order = state.mergeDraftOrder;
+  const currentPick = state.mergePicks.length;
+  if (currentPick >= order.length) return;
+
+  const playerIdx = order[currentPick];
+  const castaway = state.castaways[castawayId];
+
+  if (!castaway.mergePickedBy) castaway.mergePickedBy = [];
+  castaway.mergePickedBy.push(playerIdx);
+  state.mergePicks.push({ playerIdx, castawayId });
+
+  renderMergeDraft();
+}
+
+function undoMergePick() {
+  if (state.mergePicks.length === 0) return;
+  const last = state.mergePicks.pop();
+  const castaway = state.castaways[last.castawayId];
+  if (castaway.mergePickedBy) {
+    const idx = castaway.mergePickedBy.lastIndexOf(last.playerIdx);
+    if (idx !== -1) castaway.mergePickedBy.splice(idx, 1);
+  }
+  state.mergeDraftComplete = false;
+  renderMergeDraft();
+}
+
+// ===================== BUMP CHART =====================
+function renderBumpChart() {
+  const section = document.getElementById('bumpChartSection');
+  const container = document.getElementById('bumpChartContainer');
+  if (!state.players.length) { section.style.display = 'none'; return; }
+
+  // Collect episode data points
+  const startEp = state.settings.scoringStartEp;
+  const episodesWithData = [];
+  for (let ep = startEp; ep <= 20; ep++) {
+    if (state.episodes[ep] && Object.keys(state.episodes[ep]).length > 0) {
+      episodesWithData.push(ep);
+    }
+  }
+
+  if (episodesWithData.length < 2) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  // Calculate cumulative standings at each episode
+  const playerData = state.players.map((p, pi) => {
+    let cumulative = 0;
+    const dataPoints = episodesWithData.map(ep => {
+      const castaways = getPlayerCastaways(pi);
+      castaways.forEach(c => { cumulative += getCastawayEpisodePoints(c.id, ep); });
+      return { ep, points: cumulative };
+    });
+    return { name: p.name, color: p.color, dataPoints };
+  });
+
+  // Calculate ranks at each episode
+  const rankData = episodesWithData.map((ep, epIdx) => {
+    const scores = playerData.map((pd, pi) => ({
+      playerIdx: pi, points: pd.dataPoints[epIdx].points
+    })).sort((a, b) => b.points - a.points);
+    const ranks = {};
+    scores.forEach((s, rank) => { ranks[s.playerIdx] = rank + 1; });
+    return ranks;
+  });
+
+  // SVG dimensions
+  const W = Math.max(600, episodesWithData.length * 80 + 120);
+  const H = 40 + state.players.length * 36 + 30;
+  const padL = 90, padR = 90, padT = 30, padB = 25;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+  const numPlayers = state.players.length;
+
+  function getX(epIdx) { return padL + (epIdx / (episodesWithData.length - 1)) * chartW; }
+  function getY(rank) { return padT + ((rank - 1) / (numPlayers - 1)) * chartH; }
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;min-height:${H}px" xmlns="http://www.w3.org/2000/svg">`;
+
+  // Episode labels at top
+  episodesWithData.forEach((ep, i) => {
+    const x = getX(i);
+    svg += `<text x="${x}" y="${padT - 10}" fill="var(--text-secondary)" font-size="10" text-anchor="middle" font-family="system-ui">Ep ${ep}</text>`;
+    svg += `<line x1="${x}" y1="${padT - 4}" x2="${x}" y2="${padT + chartH}" stroke="rgba(245,200,66,0.06)" stroke-width="1"/>`;
+  });
+
+  // Draw lines for each player
+  playerData.forEach((pd, pi) => {
+    const points = rankData.map((ranks, epIdx) => {
+      return `${getX(epIdx)},${getY(ranks[pi])}`;
+    }).join(' ');
+    svg += `<polyline points="${points}" fill="none" stroke="${pd.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>`;
+
+    // Dots at each point
+    rankData.forEach((ranks, epIdx) => {
+      const x = getX(epIdx);
+      const y = getY(ranks[pi]);
+      svg += `<circle cx="${x}" cy="${y}" r="5" fill="${pd.color}" stroke="#0C1A0C" stroke-width="2"/>`;
+    });
+
+    // Player name on the right
+    const lastRank = rankData[rankData.length - 1][pi];
+    const lastY = getY(lastRank);
+    svg += `<text x="${W - padR + 8}" y="${lastY + 4}" fill="${pd.color}" font-size="11" font-weight="700" font-family="system-ui">${pd.name}</text>`;
+
+    // Player name on the left (starting position)
+    const firstRank = rankData[0][pi];
+    const firstY = getY(firstRank);
+    svg += `<text x="${padL - 8}" y="${firstY + 4}" fill="${pd.color}" font-size="11" font-weight="700" font-family="system-ui" text-anchor="end">${pd.name}</text>`;
+  });
+
+  svg += '</svg>';
+  container.innerHTML = svg;
+}
+
+// ===================== WIN PROBABILITY =====================
+function calcWinProbabilities() {
+  if (!state.players.length) return [];
+  const standings = state.players.map((p, i) => ({
+    playerIdx: i, name: p.name, color: p.color,
+    points: getPlayerTotalPoints(i)
+  }));
+
+  const totalPts = standings.reduce((sum, s) => sum + Math.max(s.points, 1), 0);
+  const maxPts = Math.max(...standings.map(s => s.points));
+
+  // Estimate how far through the season we are (by episodes with data)
+  let epsPlayed = 0;
+  for (let ep = state.settings.scoringStartEp; ep <= 16; ep++) {
+    if (state.episodes[ep] && Object.keys(state.episodes[ep]).length > 0) epsPlayed++;
+  }
+  const seasonProgress = Math.min(epsPlayed / 14, 1); // ~14 scoring episodes in a season
+
+  // Simple model: weighted combination of equal chance and current standing
+  // As season progresses, current standing matters more
+  const equalChance = 1 / state.players.length;
+  return standings.map(s => {
+    const ptsShare = Math.max(s.points, 0.5) / totalPts;
+    // Early season: more equal; late season: standings dominate
+    const winProb = equalChance * (1 - seasonProgress * 0.7) + ptsShare * (seasonProgress * 0.7);
+    return { ...s, winProb: Math.round(winProb * 100) };
+  }).sort((a, b) => b.winProb - a.winProb);
+}
+
+function renderWinProbabilities() {
+  const section = document.getElementById('winProbSection');
+  const container = document.getElementById('winProbContainer');
+  if (!state.players.length) { section.style.display = 'none'; return; }
+
+  // Only show if there's at least 1 episode of data
+  let hasData = false;
+  for (let ep = state.settings.scoringStartEp; ep <= 20; ep++) {
+    if (state.episodes[ep] && Object.keys(state.episodes[ep]).length > 0) { hasData = true; break; }
+  }
+  if (!hasData) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  const probs = calcWinProbabilities();
+  const maxProb = Math.max(...probs.map(p => p.winProb), 1);
+
+  container.innerHTML = probs.map(p => `
+    <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:0.5rem">
+      <div style="width:80px;font-weight:700;font-size:0.85rem;color:${p.color};text-align:right">${p.name}</div>
+      <div style="flex:1;height:24px;background:rgba(245,230,202,0.05);border-radius:12px;overflow:hidden;position:relative">
+        <div style="height:100%;width:${(p.winProb / maxProb) * 100}%;background:linear-gradient(90deg,${p.color}88,${p.color});border-radius:12px;transition:width 0.5s ease"></div>
+      </div>
+      <div style="width:45px;font-weight:900;font-size:0.9rem;color:${p.color}">${p.winProb}%</div>
+    </div>
+  `).join('');
+}
+
+// ===================== TEST DATA =====================
+function loadTestData() {
+  if (state.players.length > 0 && !confirm('This will overwrite all current data. Continue?')) return;
+
+  // 7 Brooklyn fantasy players
+  const testPlayers = [
+    { name: 'Jarrard', color: '#E8751A' },
+    { name: 'Marcus', color: '#2196F3' },
+    { name: 'Leah', color: '#E91E63' },
+    { name: 'Devon', color: '#4CAF50' },
+    { name: 'Priya', color: '#9C27B0' },
+    { name: 'Sam', color: '#FF9800' },
+    { name: 'Nate', color: '#00BCD4' },
+  ];
+
+  state.players = testPlayers;
+  state.settings = { draftRounds: 3, maxPicks: 2, mergeTrigger: 9, scoringStartEp: 2 };
+  state.castaways = DEFAULT_CASTAWAYS.map((c, i) => ({
+    ...c, id: i, pickedBy: [], status: 'active', eliminatedEp: null, mergePickedBy: []
+  }));
+
+  // Simulate snake draft
+  const numPlayers = testPlayers.length;
+  const order = [];
+  for (let r = 0; r < 3; r++) {
+    const indices = [...Array(numPlayers).keys()];
+    if (r % 2 === 1) indices.reverse();
+    indices.forEach(pi => order.push({ playerIdx: pi, round: r + 1 }));
+  }
+
+  // Shuffle castaway IDs for variety
+  const shuffledIds = [...Array(24).keys()].sort(() => Math.random() - 0.5);
+  state.draftOrder = [...Array(numPlayers).keys()].sort(() => Math.random() - 0.5);
+  state.draftPicks = [];
+  state.draftStarted = true;
+  state.draftComplete = true;
+
+  let pickIdx = 0;
+  order.forEach(slot => {
+    if (pickIdx >= shuffledIds.length) return;
+    const cId = shuffledIds[pickIdx];
+    const castaway = state.castaways[cId];
+    if (castaway.pickedBy.length < state.settings.maxPicks) {
+      castaway.pickedBy.push(slot.playerIdx);
+      state.draftPicks.push({ playerIdx: slot.playerIdx, castawayId: cId, round: slot.round });
+      pickIdx++;
+    }
+  });
+
+  // Simulate prop bets
+  state.propBets = {};
+  testPlayers.forEach((_, i) => {
+    state.propBets[i] = Math.floor(Math.random() * 24);
+  });
+  state.actualFirstBoot = shuffledIds[shuffledIds.length - 1]; // last shuffled = first boot
+
+  // Simulate 5 episodes of scoring data
+  state.episodes = {};
+  const activeCastaways = new Set([...Array(24).keys()]);
+  const eliminated = [];
+
+  for (let ep = 2; ep <= 6; ep++) {
+    state.episodes[ep] = {};
+
+    // Each active castaway gets some random scoring
+    activeCastaways.forEach(cId => {
+      const scores = {};
+
+      // ~60% chance of surviving tribal
+      if (Math.random() < 0.6) scores.survives = true;
+
+      // ~8% chance of finding idol
+      if (Math.random() < 0.08) scores.findIdol = true;
+
+      // ~3% chance of playing idol successfully
+      if (Math.random() < 0.03) scores.playIdol = true;
+
+      // ~10% chance of finding advantage
+      if (Math.random() < 0.1) scores.findAdvantage = true;
+
+      // ~5% chance of playing advantage
+      if (Math.random() < 0.05) scores.playAdvantage = true;
+
+      // Episode 5+ = merge
+      if (ep >= 5) scores.makesMerge = true;
+
+      // ~4% chance of individual immunity (post-merge only)
+      if (ep >= 5 && Math.random() < 0.06) scores.immunityWin = true;
+
+      if (Object.keys(scores).length > 0) {
+        state.episodes[ep][cId] = scores;
+      }
+    });
+
+    // Eliminate 1-2 castaways per episode
+    const numElim = ep === 2 ? 2 : 1; // Double boot first week
+    for (let e = 0; e < numElim && activeCastaways.size > 9; e++) {
+      const active = [...activeCastaways];
+      const elimId = active[Math.floor(Math.random() * active.length)];
+      activeCastaways.delete(elimId);
+      eliminated.push(elimId);
+      state.castaways[elimId].status = 'eliminated';
+      state.castaways[elimId].eliminatedEp = ep;
+      // Remove survives for eliminated player
+      if (state.episodes[ep][elimId]) {
+        delete state.episodes[ep][elimId].survives;
+      }
+    }
+  }
+
+  // Test power rankings
+  state.powerRankings = {
+    3: "Early days, and Jarrard's triple-threat tribe is looking stacked. Cirie and Ozzy are racking up survival points like it's 2006 again. Meanwhile Devon's squad took a hit when Q got blindsided — that's what happens when you draft the biggest target on the island.",
+    4: "The standings are tightening up. Leah's tribe had a quiet week but Emily's consistent TC survival is paying dividends. Sam needs a big move from Coach soon or this could get out of hand. Priya's dark horse strategy of drafting under-the-radar players is starting to look smart.",
+    5: "WHAT A WEEK. Two idols found, one played, and Nate's tribe just went from last to third thanks to Devens doing Devens things. The bump chart is starting to look like a Brooklyn subway map — lines crossing everywhere. Marcus still sitting pretty at the top though.",
+    6: "Heading into the merge stretch and the race is wide open. Four players within 12 points of each other. The merge draft is going to be crucial — whoever picks up the right free agent could run away with this. Keep your eyes on the immunity beasts still in the game."
+  };
+
+  state.currentEpisode = 6;
+  renderAll();
+}
+
+// ===================== EPISODE HIGHLIGHTS =====================
+function renderEpHighlights() {
+  const section = document.getElementById('epHighlightsSection');
+  if (!state.players.length) { section.style.display = 'none'; return; }
+
+  // Find the latest episode with data
+  let latestEp = 0;
+  for (let ep = state.settings.scoringStartEp; ep <= 20; ep++) {
+    if (state.episodes[ep] && Object.keys(state.episodes[ep]).length > 0) latestEp = ep;
+  }
+  if (!latestEp) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  document.getElementById('epHighlightsTitle').textContent = 'Episode ' + latestEp + ' Highlights';
+
+  const epData = state.episodes[latestEp];
+  const highlights = [];
+
+  // Collect all scoring events from the latest episode
+  const iconMap = {
+    survives: { icon: '🔥', label: 'survived tribal' },
+    findIdol: { icon: '🗿', label: 'found an idol' },
+    playIdol: { icon: '💎', label: 'played an idol successfully' },
+    findAdvantage: { icon: '📜', label: 'found an advantage' },
+    playAdvantage: { icon: '⚡', label: 'played an advantage' },
+    makesMerge: { icon: '🤝', label: 'made the merge' },
+    idolPocket: { icon: '💀', label: 'went home with an idol' },
+    quit: { icon: '🚪', label: 'left the game' },
+    immunityWin: { icon: '🏆', label: 'won individual immunity' },
+    firemaking: { icon: '🔥', label: 'won firemaking' },
+    soleSurvivor: { icon: '👑', label: 'became Sole Survivor' },
+  };
+
+  Object.entries(epData).forEach(([castawayId, scores]) => {
+    const c = state.castaways[parseInt(castawayId)];
+    if (!c) return;
+
+    Object.entries(scores).forEach(([key, val]) => {
+      if (!val || key === 'juryVotes') return;
+      const cat = SCORING_CATEGORIES.find(sc => sc.key === key);
+      if (!cat) return;
+      const info = iconMap[key] || { icon: '•', label: key };
+      const pts = cat.type === 'number' ? val * cat.points : cat.points;
+      highlights.push({
+        icon: info.icon,
+        text: `<span class="castaway-pill pill-sm" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}</span> ${info.label}`,
+        pts,
+        priority: Math.abs(pts)
+      });
+    });
+
+    // Jury votes
+    if (scores.juryVotes && scores.juryVotes > 0) {
+      const pts = scores.juryVotes * 3;
+      highlights.push({
+        icon: '🗳️',
+        text: `<span class="castaway-pill pill-sm" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}</span> received ${scores.juryVotes} jury vote${scores.juryVotes > 1 ? 's' : ''}`,
+        pts,
+        priority: pts
+      });
+    }
+  });
+
+  // Eliminations
+  state.castaways.forEach(c => {
+    if (c.eliminatedEp === latestEp) {
+      highlights.push({
+        icon: '🔻',
+        text: `<span class="castaway-pill pill-sm elim" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}</span> was eliminated`,
+        pts: 0,
+        priority: 10
+      });
+    }
+  });
+
+  // Sort by priority (biggest events first), limit to top 8
+  highlights.sort((a, b) => b.priority - a.priority);
+  const top = highlights.slice(0, 10);
+
+  document.getElementById('epHighlightsContainer').innerHTML = top.map(h => `
+    <div class="ep-highlight-item">
+      <div class="ep-highlight-icon">${h.icon}</div>
+      <div class="ep-highlight-text">${h.text}</div>
+      ${h.pts !== 0 ? `<div class="ep-highlight-pts ${h.pts > 0 ? 'positive' : 'negative'}">${h.pts > 0 ? '+' : ''}${h.pts}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ===================== POWER RANKINGS =====================
+function renderPowerRankings() {
+  const section = document.getElementById('powerRankingsSection');
+  if (!state.players.length) { section.style.display = 'none'; return; }
+
+  // Find latest episode with data
+  let latestEp = 0;
+  for (let ep = state.settings.scoringStartEp; ep <= 20; ep++) {
+    if (state.episodes[ep] && Object.keys(state.episodes[ep]).length > 0) latestEp = ep;
+  }
+  if (!latestEp) { section.style.display = 'none'; return; }
+
+  // Show section if there's a ranking for any episode
+  const ranking = state.powerRankings[latestEp];
+  if (!ranking && !Object.keys(state.powerRankings).length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  document.getElementById('powerRankingsEp').textContent = 'After Episode ' + latestEp;
+
+  if (ranking) {
+    // Highlight player names in the text
+    let html = ranking;
+    state.players.forEach(p => {
+      html = html.replace(new RegExp('\\b' + p.name + '\\b', 'g'),
+        `<span class="pr-highlight" style="color:${p.color}">${p.name}</span>`);
+    });
+    // Highlight castaway shortNames
+    state.castaways.forEach(c => {
+      html = html.replace(new RegExp('\\b' + c.shortName + '\\b', 'g'),
+        `<span class="castaway-pill pill-sm" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}</span>`);
+    });
+    document.getElementById('powerRankingsBody').innerHTML = html;
+  } else {
+    document.getElementById('powerRankingsBody').innerHTML = '<span style="color:var(--text-secondary);font-style:italic">No power rankings written yet for this episode. Click Edit to add your hot takes.</span>';
+  }
+
+  document.getElementById('powerRankingsTextarea').value = ranking || '';
+}
+
+function togglePowerRankingsEdit() {
+  const area = document.getElementById('powerRankingsEditArea');
+  area.style.display = area.style.display === 'none' ? '' : 'none';
+}
+
+function savePowerRankings() {
+  let latestEp = 0;
+  for (let ep = state.settings.scoringStartEp; ep <= 20; ep++) {
+    if (state.episodes[ep] && Object.keys(state.episodes[ep]).length > 0) latestEp = ep;
+  }
+  if (!latestEp) return;
+
+  const text = document.getElementById('powerRankingsTextarea').value.trim();
+  if (text) {
+    state.powerRankings[latestEp] = text;
+  } else {
+    delete state.powerRankings[latestEp];
+  }
+  document.getElementById('powerRankingsEditArea').style.display = 'none';
+  renderPowerRankings();
+}
+
+// ===================== SEASON TIMELINE (Swimlane) =====================
+function renderTimeline() {
+  const section = document.getElementById('timelineSection');
+  if (!state.players.length) { section.style.display = 'none'; return; }
+
+  const startEp = state.settings.scoringStartEp;
+  const episodesWithData = [];
+  for (let ep = startEp; ep <= 20; ep++) {
+    if (state.episodes[ep] && Object.keys(state.episodes[ep]).length > 0) episodesWithData.push(ep);
+  }
+  if (episodesWithData.length < 1) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  const maxEp = episodesWithData[episodesWithData.length - 1];
+  const tribeColors = { Vatu: '#8B5CF6', Kalo: '#14B8A6', Cila: '#F97316' };
+
+  // Build per-player data
+  const playerRows = state.players.map((p, pi) => {
+    const castaways = getPlayerCastaways(pi);
+    // Per-episode point totals for this player
+    const epPoints = episodesWithData.map(ep => {
+      let pts = 0;
+      castaways.forEach(c => { pts += getCastawayEpisodePoints(c.id, ep); });
+      return { ep, pts };
+    });
+    // Cumulative points at each episode
+    let cum = 0;
+    const cumPoints = epPoints.map(e => { cum += e.pts; return { ep: e.ep, pts: e.pts, cum }; });
+    return { player: p, playerIdx: pi, castaways, epPoints, cumPoints };
+  });
+
+  // Sort by current standings (highest first)
+  playerRows.sort((a, b) => {
+    const aCum = a.cumPoints.length ? a.cumPoints[a.cumPoints.length - 1].cum : 0;
+    const bCum = b.cumPoints.length ? b.cumPoints[b.cumPoints.length - 1].cum : 0;
+    return bCum - aCum;
+  });
+
+  // SVG dimensions
+  const numPlayers = playerRows.length;
+  const rowH = 52;
+  const castBarH = 8;
+  const padL = 80, padR = 50, padT = 28, padB = 10;
+  const W = 700;
+  const H = padT + numPlayers * rowH + padB;
+  const chartW = W - padL - padR;
+
+  function getX(ep) {
+    return padL + ((ep - startEp) / Math.max(maxEp - startEp, 1)) * chartW;
+  }
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" class="timeline-svg" xmlns="http://www.w3.org/2000/svg">`;
+
+  // Episode column headers
+  episodesWithData.forEach(ep => {
+    const x = getX(ep);
+    svg += `<text x="${x}" y="${padT - 10}" fill="var(--torch-gold)" font-size="8" text-anchor="middle" font-family="system-ui" opacity="0.6">Ep ${ep}</text>`;
+    svg += `<line x1="${x}" y1="${padT - 2}" x2="${x}" y2="${H - padB}" stroke="rgba(245,200,66,0.04)" stroke-width="1"/>`;
+  });
+
+  // Max points across all single episodes (for sparkline scaling)
+  let maxEpPts = 1;
+  playerRows.forEach(pr => {
+    pr.epPoints.forEach(e => { if (e.pts > maxEpPts) maxEpPts = e.pts; });
+  });
+
+  // Draw each player row
+  playerRows.forEach((pr, rowIdx) => {
+    const rowY = padT + rowIdx * rowH;
+    const color = pr.player.color;
+
+    // Row background (alternating)
+    if (rowIdx % 2 === 0) {
+      svg += `<rect x="0" y="${rowY}" width="${W}" height="${rowH}" fill="rgba(245,230,202,0.015)" rx="0"/>`;
+    }
+
+    // Player name
+    svg += `<text x="${padL - 8}" y="${rowY + 14}" fill="${color}" font-size="10" font-weight="800" text-anchor="end" font-family="system-ui">${pr.player.name}</text>`;
+
+    // Cumulative total on the right
+    const totalPts = pr.cumPoints.length ? pr.cumPoints[pr.cumPoints.length - 1].cum : 0;
+    svg += `<text x="${W - padR + 8}" y="${rowY + 14}" fill="${color}" font-size="11" font-weight="900" font-family="system-ui">${totalPts}</text>`;
+
+    // Castaway bars — horizontal bars showing lifespan
+    const barStartX = getX(startEp);
+    pr.castaways.forEach((c, ci) => {
+      const barY = rowY + 20 + ci * (castBarH + 2);
+      const endEp = c.eliminatedEp || maxEp;
+      const barEndX = getX(endEp);
+      const barW = Math.max(barEndX - barStartX, 4);
+      const cColor = tribeColors[c.s50tribe] || color;
+      const isElim = c.status === 'eliminated';
+      const opacity = isElim ? 0.3 : 0.7;
+
+      // Bar
+      svg += `<rect x="${barStartX}" y="${barY}" width="${barW}" height="${castBarH}" rx="3" fill="${cColor}" opacity="${opacity}"/>`;
+
+      // Name inside bar (if wide enough)
+      if (barW > 30) {
+        svg += `<text x="${barStartX + 4}" y="${barY + castBarH - 1.5}" fill="#fff" font-size="5.5" font-weight="700" font-family="system-ui" opacity="0.9">${c.shortName}</text>`;
+      }
+
+      // Elimination X marker
+      if (isElim) {
+        const xPos = barEndX;
+        svg += `<text x="${xPos}" y="${barY + castBarH - 1}" fill="#C62828" font-size="8" font-weight="900" text-anchor="middle" font-family="system-ui">✕</text>`;
+      }
+
+      // Points earned per episode — small dots
+      episodesWithData.forEach(ep => {
+        if (c.eliminatedEp && ep > c.eliminatedEp) return;
+        const cPts = getCastawayEpisodePoints(c.id, ep);
+        if (cPts > 0) {
+          const dotX = getX(ep);
+          const dotR = 1.5 + (cPts / maxEpPts) * 2;
+          svg += `<circle cx="${dotX}" cy="${barY + castBarH / 2}" r="${dotR}" fill="#fff" opacity="0.5"/>`;
+        }
+      });
+    });
+
+    // Episode point sparkline (thin line along bottom of row)
+    if (pr.cumPoints.length > 1) {
+      const sparkY = rowY + rowH - 6;
+      const sparkH = 10;
+      const maxCum = Math.max(...playerRows.map(r => r.cumPoints.length ? r.cumPoints[r.cumPoints.length - 1].cum : 1), 1);
+      const points = pr.cumPoints.map(cp => {
+        const x = getX(cp.ep);
+        const y = sparkY - (cp.cum / maxCum) * sparkH;
+        return `${x},${y}`;
+      }).join(' ');
+      svg += `<polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.3" stroke-linecap="round"/>`;
+    }
+
+    // Separator line
+    svg += `<line x1="0" y1="${rowY + rowH}" x2="${W}" y2="${rowY + rowH}" stroke="rgba(245,200,66,0.04)" stroke-width="0.5"/>`;
+  });
+
+  svg += '</svg>';
+
+  // Legend
+  const legendHtml = `<div class="timeline-legend">
+    <div class="timeline-legend-item"><div class="timeline-legend-dot" style="background:#8B5CF6"></div>Vatu</div>
+    <div class="timeline-legend-item"><div class="timeline-legend-dot" style="background:#14B8A6"></div>Kalo</div>
+    <div class="timeline-legend-item"><div class="timeline-legend-dot" style="background:#F97316"></div>Cila</div>
+    <div class="timeline-legend-item"><span style="color:#C62828;font-weight:900;margin-right:2px">✕</span>Eliminated</div>
+    <div class="timeline-legend-item"><span style="display:inline-block;width:8px;height:2px;background:var(--text-secondary);margin-right:4px;vertical-align:middle"></span>Cumulative pts</div>
+  </div>`;
+
+  document.getElementById('timelineContainer').innerHTML = svg + legendHtml;
+}
+
+// ===================== HEAD-TO-HEAD =====================
+function renderH2H() {
+  const section = document.getElementById('h2hSection');
+  if (state.players.length < 2) { section.style.display = 'none'; return; }
+
+  // Only show if there's scoring data
+  let hasData = false;
+  for (let ep = state.settings.scoringStartEp; ep <= 20; ep++) {
+    if (state.episodes[ep] && Object.keys(state.episodes[ep]).length > 0) { hasData = true; break; }
+  }
+  if (!hasData) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  const selectors = document.getElementById('h2hSelectors');
+  const sel1 = document.getElementById('h2hSelect1');
+  const sel2 = document.getElementById('h2hSelect2');
+
+  if (!sel1) {
+    // First render — create selectors
+    const options = state.players.map((p, i) => `<option value="${i}" style="color:${p.color}">${p.name}</option>`).join('');
+    selectors.innerHTML = `
+      <select id="h2hSelect1" onchange="updateH2H()">${options}</select>
+      <span class="h2h-vs">VS</span>
+      <select id="h2hSelect2" onchange="updateH2H()">${state.players.map((p, i) => `<option value="${i}" ${i === 1 ? 'selected' : ''} style="color:${p.color}">${p.name}</option>`).join('')}</select>
+    `;
+  }
+
+  updateH2H();
+}
+
+function updateH2H() {
+  const sel1 = document.getElementById('h2hSelect1');
+  const sel2 = document.getElementById('h2hSelect2');
+  if (!sel1 || !sel2) return;
+
+  const p1Idx = parseInt(sel1.value);
+  const p2Idx = parseInt(sel2.value);
+  const p1 = state.players[p1Idx];
+  const p2 = state.players[p2Idx];
+
+  const p1Pts = getPlayerTotalPoints(p1Idx);
+  const p2Pts = getPlayerTotalPoints(p2Idx);
+  const p1Cast = getPlayerCastaways(p1Idx);
+  const p2Cast = getPlayerCastaways(p2Idx);
+  const p1Active = p1Cast.filter(c => c.status === 'active').length;
+  const p2Active = p2Cast.filter(c => c.status === 'active').length;
+
+  // Shared castaways
+  const shared = p1Cast.filter(c => p2Cast.find(c2 => c2.id === c.id));
+
+  // Best performer per team
+  const p1Best = p1Cast.reduce((best, c) => getCastawayTotalPoints(c.id) > getCastawayTotalPoints(best.id) ? c : best, p1Cast[0]);
+  const p2Best = p2Cast.reduce((best, c) => getCastawayTotalPoints(c.id) > getCastawayTotalPoints(best.id) ? c : best, p2Cast[0]);
+
+  // Episodes won (who scored more that week)
+  let p1Wins = 0, p2Wins = 0, ties = 0;
+  for (let ep = state.settings.scoringStartEp; ep <= 20; ep++) {
+    if (!state.episodes[ep] || !Object.keys(state.episodes[ep]).length) continue;
+    let pts1 = 0, pts2 = 0;
+    p1Cast.forEach(c => { pts1 += getCastawayEpisodePoints(c.id, ep); });
+    p2Cast.forEach(c => { pts2 += getCastawayEpisodePoints(c.id, ep); });
+    if (pts1 > pts2) p1Wins++;
+    else if (pts2 > pts1) p2Wins++;
+    else ties++;
+  }
+
+  function statRow(label, v1, v2, suffix) {
+    suffix = suffix || '';
+    const w1 = parseFloat(v1) > parseFloat(v2) ? ' winning' : '';
+    const w2 = parseFloat(v2) > parseFloat(v1) ? ' winning' : '';
+    return `<div class="h2h-stat-row">
+      <div class="h2h-stat-val left${w1}" style="color:${p1.color}">${v1}${suffix}</div>
+      <div class="h2h-stat-label">${label}</div>
+      <div class="h2h-stat-val right${w2}" style="color:${p2.color}">${v2}${suffix}</div>
+    </div>`;
+  }
+
+  const result = document.getElementById('h2hResult');
+  result.innerHTML = `
+    <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
+      <div style="font-weight:900;font-size:1.1rem;color:${p1.color}">${p1.name}</div>
+      <div style="font-weight:900;font-size:1.1rem;color:${p2.color}">${p2.name}</div>
+    </div>
+    ${statRow('Total Points', p1Pts, p2Pts)}
+    ${statRow('Active Castaways', p1Active, p2Active)}
+    ${statRow('Episodes Won', p1Wins, p2Wins)}
+    ${ties > 0 ? `<div style="text-align:center;font-size:0.65rem;color:var(--text-secondary);margin:0.2rem 0">${ties} tied episode${ties > 1 ? 's' : ''}</div>` : ''}
+    ${statRow('MVP', p1Best ? p1Best.shortName + ' (' + getCastawayTotalPoints(p1Best.id) + ')' : '-', p2Best ? p2Best.shortName + ' (' + getCastawayTotalPoints(p2Best.id) + ')' : '-')}
+    ${shared.length > 0 ? `<div style="margin-top:0.5rem;font-size:0.75rem;color:var(--text-secondary)">Shared castaways: ${shared.map(c => `<span class="castaway-pill pill-sm" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}</span>`).join(' ')}</div>` : ''}
+  `;
+}
+
+// ===================== CASTAWAY HUD =====================
+let _hudTimeout = null;
+
+function showCastawayHud(event, castawayId) {
+  clearTimeout(_hudTimeout);
+  const c = state.castaways[castawayId];
+  if (!c) return;
+
+  const hud = document.getElementById('castawayHud');
+  const photo = document.getElementById('hudPhoto');
+  const name = document.getElementById('hudName');
+  const tribe = document.getElementById('hudTribe');
+  const season = document.getElementById('hudSeason');
+  const stats = document.getElementById('hudStats');
+  const drafted = document.getElementById('hudDrafted');
+
+  // Photo
+  if (c.photo) {
+    photo.src = c.photo;
+    photo.style.display = '';
+    photo.onerror = () => { photo.style.display = 'none'; };
+  } else {
+    photo.style.display = 'none';
+  }
+
+  name.textContent = c.name;
+
+  // S50 tribe
+  const tribeColors = { Vatu: 'var(--vatu-purple)', Kalo: 'var(--kalo-teal)', Cila: 'var(--cila-orange)' };
+  tribe.textContent = c.s50tribe || '';
+  tribe.style.color = tribeColors[c.s50tribe] || 'var(--text-secondary)';
+
+  season.textContent = 'Seasons: ' + c.seasons;
+
+  // Stats
+  const totalPts = getCastawayTotalPoints(c.id);
+  const status = c.status === 'eliminated' ? `Out Ep ${c.eliminatedEp}` : 'Active';
+  const statusColor = c.status === 'eliminated' ? 'var(--tribal-red)' : 'var(--jungle-green)';
+
+  // Count episodes survived
+  let epsSurvived = 0;
+  for (let ep = state.settings.scoringStartEp; ep <= 20; ep++) {
+    const epData = state.episodes[ep];
+    if (epData && epData[c.id] && epData[c.id].survives) epsSurvived++;
+  }
+
+  // Count idols/advantages
+  let idols = 0, advantages = 0, immunities = 0;
+  for (let ep = state.settings.scoringStartEp; ep <= 20; ep++) {
+    const epData = state.episodes[ep];
+    if (epData && epData[c.id]) {
+      if (epData[c.id].findIdol) idols++;
+      if (epData[c.id].findAdvantage) advantages++;
+      if (epData[c.id].immunityWin) immunities++;
+    }
+  }
+
+  stats.innerHTML = `
+    <div class="castaway-hud-stat"><div class="stat-label">Points</div><div class="stat-value" style="color:var(--torch-gold)">${totalPts}</div></div>
+    <div class="castaway-hud-stat"><div class="stat-label">Status</div><div class="stat-value" style="color:${statusColor}">${status}</div></div>
+    <div class="castaway-hud-stat"><div class="stat-label">TCs Survived</div><div class="stat-value">${epsSurvived}</div></div>
+    <div class="castaway-hud-stat"><div class="stat-label">Idols/Adv</div><div class="stat-value">${idols > 0 || advantages > 0 ? idols + '/' + advantages : '-'}</div></div>
+    ${immunities > 0 ? `<div class="castaway-hud-stat"><div class="stat-label">Immunities</div><div class="stat-value">${immunities}</div></div>` : ''}
+  `;
+
+  // Drafted by
+  const draftedByHtml = c.pickedBy.map(pi => {
+    const p = state.players[pi];
+    return p ? `<span class="hud-badge" style="background:${p.color}">${p.name}</span>` : '';
+  }).join('');
+  const mergeByHtml = (c.mergePickedBy || []).map(pi => {
+    const p = state.players[pi];
+    return p ? `<span class="hud-badge" style="background:${p.color};border:1px solid var(--ocean-blue)">${p.name} (M)</span>` : '';
+  }).join('');
+  drafted.innerHTML = draftedByHtml + mergeByHtml || '<span style="font-size:0.65rem;color:var(--text-secondary)">Undrafted</span>';
+
+  // Position the HUD near the mouse
+  const rect = event.target.getBoundingClientRect();
+  let x = rect.left + rect.width / 2;
+  let y = rect.bottom + 8;
+
+  // Keep within viewport
+  if (x + 240 > window.innerWidth) x = window.innerWidth - 250;
+  if (x < 10) x = 10;
+  if (y + 340 > window.innerHeight) y = rect.top - 340;
+
+  hud.style.left = x + 'px';
+  hud.style.top = y + 'px';
+  hud.classList.add('visible');
+}
+
+function hideCastawayHud() {
+  _hudTimeout = setTimeout(() => {
+    document.getElementById('castawayHud').classList.remove('visible');
+  }, 100);
+}
+
+// ===================== INIT =====================
+init();
+</script>
+
+<!-- Castaway HUD tooltip -->
+<div class="castaway-hud" id="castawayHud">
+  <img class="castaway-hud-photo" id="hudPhoto" src="" alt="">
+  <div class="castaway-hud-body">
+    <div class="castaway-hud-name" id="hudName"></div>
+    <div class="castaway-hud-tribe" id="hudTribe"></div>
+    <div class="castaway-hud-season" id="hudSeason"></div>
+    <div class="castaway-hud-stats" id="hudStats"></div>
+    <div class="castaway-hud-drafted" id="hudDrafted"></div>
+  </div>
+</div>
+
+</body>
+</html>
