@@ -1801,6 +1801,241 @@ h3 { font-size: 1.2rem; margin-bottom: 0.8rem; color: var(--torch-gold); }
   body { background: #fff; color: #000; }
   .card { border: 1px solid #ccc; }
 }
+
+/* ========== JOIN MODE ========== */
+body.join-mode nav,
+body.join-mode .sync-banner,
+body.join-mode .bk-map-bg { display: none !important; }
+
+body.join-mode main { max-width: 100%; padding: 0; margin: 0; }
+
+body.join-mode .page { display: none !important; }
+.join-flow { display: none; }
+body.join-mode .join-flow { display: block; }
+
+.join-step {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  position: absolute;
+  width: 100%;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+.join-step.active {
+  opacity: 1;
+  transform: translateY(0);
+  position: relative;
+  pointer-events: auto;
+}
+
+/* Welcome map — prominent Brooklyn SVG */
+.join-welcome-map {
+  width: 92%;
+  max-width: 420px;
+  margin: 0 auto 1.5rem;
+  opacity: 0.55;
+  filter: drop-shadow(0 0 40px rgba(232,117,26,0.08));
+}
+
+.join-title {
+  font-size: 2.2rem;
+  font-weight: 900;
+  text-align: center;
+  background: linear-gradient(90deg, var(--torch-orange), var(--torch-gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+  line-height: 1.1;
+}
+
+.join-subtitle {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 1.5rem;
+  max-width: 320px;
+}
+
+.join-explainer {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-align: center;
+  max-width: 340px;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+.join-explainer strong { color: var(--torch-gold); }
+
+/* Inputs — large mobile targets */
+.join-input {
+  width: 100%;
+  max-width: 360px;
+  padding: 1rem 1.2rem;
+  font-size: 1.1rem;
+  background: rgba(255,255,255,0.08);
+  border: 2px solid rgba(255,255,255,0.15);
+  border-radius: 12px;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  -webkit-appearance: none;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.join-input:focus {
+  outline: none;
+  border-color: var(--torch-orange);
+  box-shadow: 0 0 20px rgba(232,117,26,0.15);
+}
+.join-input.error { border-color: #E53935; }
+.join-input::placeholder { color: rgba(245,230,202,0.3); }
+
+.join-error {
+  color: #E53935;
+  font-size: 0.8rem;
+  min-height: 1.2em;
+  margin-bottom: 0.3rem;
+  max-width: 360px;
+  width: 100%;
+  text-align: left;
+}
+
+/* Castaway grid — 3 col on mobile */
+.join-cast-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.join-cast-card {
+  background: var(--card-bg);
+  border-radius: 10px;
+  padding: 0.5rem 0.3rem;
+  text-align: center;
+  border: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.join-cast-card:active { transform: scale(0.95); }
+.join-cast-card.selected {
+  border-color: var(--torch-orange);
+  box-shadow: 0 0 20px rgba(232,117,26,0.3);
+  transform: scale(1.03);
+  background: rgba(232,117,26,0.08);
+}
+
+.join-cast-card .jc-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  margin: 0 auto 0.3rem;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--torch-orange), var(--torch-gold));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.join-cast-card .jc-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.join-cast-card .jc-name {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.15;
+}
+.join-cast-card .jc-tribe {
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-top: 0.15rem;
+}
+
+/* Buttons */
+.join-btn {
+  width: 100%;
+  max-width: 360px;
+  padding: 1rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  margin-top: 1.5rem;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.join-btn-primary {
+  background: linear-gradient(135deg, var(--torch-orange), #D4690F);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(232,117,26,0.3);
+}
+.join-btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(232,117,26,0.4);
+}
+.join-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.join-btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid rgba(255,255,255,0.15);
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  margin-top: 0.8rem;
+}
+
+/* Confirmation card */
+.join-confirm-card {
+  background: var(--card-bg);
+  border: 2px solid var(--torch-gold);
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  max-width: 360px;
+  width: 100%;
+  box-shadow: 0 0 40px rgba(245,200,66,0.08);
+}
+.join-confirm-card .jcc-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+
+/* Responsive */
+@media (min-width: 500px) {
+  .join-cast-grid { grid-template-columns: repeat(6, 1fr); max-width: 620px; }
+  .join-cast-card .jc-avatar { width: 60px; height: 60px; }
+}
+@media (max-width: 340px) {
+  .join-cast-grid { gap: 0.3rem; }
+  .join-cast-card { padding: 0.3rem; }
+  .join-cast-card .jc-avatar { width: 42px; height: 42px; }
+  .join-cast-card .jc-name { font-size: 0.6rem; }
+  .join-title { font-size: 1.8rem; }
+}
+
+/* Registration preview table (admin) */
+.reg-preview-table { width: 100%; font-size: 0.8rem; border-collapse: collapse; }
+.reg-preview-table th { text-align: left; padding: 0.4rem; border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary); font-weight: 600; }
+.reg-preview-table td { padding: 0.4rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
 </style>
 </head>
 <body>
@@ -1989,6 +2224,97 @@ h3 { font-size: 1.2rem; margin-bottom: 0.8rem; color: var(--torch-gold); }
 
 <!-- Brooklyn map background is now full-page via .bk-map-bg above -->
 
+<!-- ==================== JOIN FLOW ==================== -->
+<div class="join-flow" id="joinFlow">
+
+  <!-- Step 1: Welcome -->
+  <div class="join-step active" id="joinStep1">
+    <div class="join-welcome-map">
+      <svg viewBox="0 0 400 180" xmlns="http://www.w3.org/2000/svg" style="width:100%">
+        <defs>
+          <linearGradient id="joinMapFade" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="rgba(245,200,66,0.25)"/>
+            <stop offset="100%" stop-color="rgba(245,200,66,0.05)"/>
+          </linearGradient>
+        </defs>
+        <line x1="180" y1="10" x2="240" y2="170" stroke="rgba(245,200,66,0.18)" stroke-width="4"/>
+        <line x1="20" y1="65" x2="380" y2="65" stroke="rgba(245,200,66,0.15)" stroke-width="3"/>
+        <line x1="280" y1="10" x2="280" y2="170" stroke="rgba(245,200,66,0.12)" stroke-width="2.5"/>
+        <line x1="40" y1="90" x2="350" y2="90" stroke="rgba(245,200,66,0.10)" stroke-width="1.5"/>
+        <line x1="40" y1="110" x2="350" y2="110" stroke="rgba(245,200,66,0.10)" stroke-width="1.5"/>
+        <line x1="120" y1="30" x2="120" y2="160" stroke="rgba(245,200,66,0.10)" stroke-width="1.5"/>
+        <line x1="80" y1="30" x2="80" y2="160" stroke="rgba(245,200,66,0.08)" stroke-width="1.5"/>
+        <line x1="220" y1="30" x2="220" y2="160" stroke="rgba(245,200,66,0.10)" stroke-width="1.5"/>
+        <polygon points="210,55 230,45 250,55 230,65" fill="rgba(232,117,26,0.3)" stroke="rgba(232,117,26,0.4)" stroke-width="1"/>
+        <text x="90" y="100" fill="rgba(245,200,66,0.22)" font-size="9" font-weight="700" font-family="system-ui" letter-spacing="2">BOERUM HILL</text>
+        <text x="210" y="40" fill="rgba(245,200,66,0.18)" font-size="8" font-weight="700" font-family="system-ui" letter-spacing="2">FORT GREENE</text>
+        <text x="285" y="130" fill="rgba(245,200,66,0.20)" font-size="8" font-weight="700" font-family="system-ui" letter-spacing="2">PARK SLOPE</text>
+        <text x="225" y="62" fill="rgba(232,117,26,0.35)" font-size="5" font-weight="600" font-family="system-ui" text-anchor="middle">BARCLAYS</text>
+        <circle cx="100" cy="85" r="4" fill="rgba(232,117,26,0.4)"/>
+        <circle cx="100" cy="85" r="8" fill="none" stroke="rgba(232,117,26,0.15)" stroke-width="1"/>
+        <circle cx="250" cy="100" r="4" fill="rgba(232,117,26,0.35)"/>
+        <circle cx="250" cy="100" r="8" fill="none" stroke="rgba(232,117,26,0.12)" stroke-width="1"/>
+        <circle cx="310" cy="115" r="4" fill="rgba(232,117,26,0.35)"/>
+        <circle cx="310" cy="115" r="8" fill="none" stroke="rgba(232,117,26,0.12)" stroke-width="1"/>
+        <circle cx="160" cy="75" r="4" fill="rgba(232,117,26,0.35)"/>
+        <circle cx="160" cy="75" r="8" fill="none" stroke="rgba(232,117,26,0.12)" stroke-width="1"/>
+      </svg>
+    </div>
+    <div class="join-title">Survivor 50</div>
+    <div class="join-title" style="font-size:1.3rem;margin-top:-0.1rem">Fantasy Draft</div>
+    <div class="join-subtitle">Brooklyn, NY &middot; Season Premiere Wed Feb 26</div>
+    <div class="join-explainer">
+      Before the game begins, make your <strong>first boot prediction</strong>. Pick which castaway you think gets voted out first &mdash; guess right and earn <strong>+5 bonus points</strong> for your fantasy team.
+    </div>
+    <button class="join-btn join-btn-primary" onclick="joinGoToStep(2)">
+      Join the League
+    </button>
+  </div>
+
+  <!-- Step 2: Name + Email -->
+  <div class="join-step" id="joinStep2">
+    <div class="join-title" style="font-size:1.4rem">Your Info</div>
+    <div class="join-subtitle">Sign up for the fantasy pool</div>
+    <input type="text" class="join-input" id="joinName" placeholder="Your name" autocomplete="name" autocapitalize="words">
+    <div class="join-error" id="joinNameError"></div>
+    <input type="email" class="join-input" id="joinEmail" placeholder="Email address" autocomplete="email" inputmode="email">
+    <div class="join-error" id="joinEmailError"></div>
+    <div class="join-explainer" style="margin-top:0.5rem;font-size:0.75rem">
+      Your email is only used to prevent duplicate sign-ups. It won't be shared.
+    </div>
+    <button class="join-btn join-btn-primary" onclick="joinValidateInfo()">Next</button>
+    <button class="join-btn join-btn-secondary" onclick="joinGoToStep(1)">Back</button>
+  </div>
+
+  <!-- Step 3: First Boot Pick -->
+  <div class="join-step" id="joinStep3">
+    <div class="join-title" style="font-size:1.4rem">First Boot</div>
+    <div class="join-subtitle">Who gets voted out first? Tap to pick.</div>
+    <div class="join-cast-grid" id="joinCastGrid"></div>
+    <div class="join-error" id="joinPickError" style="text-align:center;margin-top:0.5rem"></div>
+    <button class="join-btn join-btn-primary" id="joinSubmitBtn" onclick="joinSubmit()" disabled>
+      Lock It In 🔥
+    </button>
+    <button class="join-btn join-btn-secondary" onclick="joinGoToStep(2)">Back</button>
+  </div>
+
+  <!-- Step 4: Confirmation -->
+  <div class="join-step" id="joinStep4">
+    <div class="join-confirm-card">
+      <div class="jcc-icon">🔥</div>
+      <div class="join-title" style="font-size:1.3rem">You're In!</div>
+      <div style="color:var(--text-secondary);margin:0.5rem 0 1rem;font-size:0.9rem">
+        Your first boot prediction is locked. Good luck!
+      </div>
+      <div id="joinConfirmDetails" style="margin-bottom:1.5rem"></div>
+      <button class="join-btn join-btn-primary" onclick="joinViewLeague()" style="font-size:0.9rem;padding:0.8rem">
+        View the League
+      </button>
+    </div>
+  </div>
+
+</div>
+
 <!-- ==================== SETUP PAGE ==================== -->
 <div class="page" id="page-setup">
   <h2>League Setup</h2>
@@ -2088,6 +2414,22 @@ h3 { font-size: 1.2rem; margin-bottom: 0.8rem; color: var(--torch-gold); }
         <option value="">-- Not yet revealed --</option>
       </select>
     </div>
+  </div>
+
+  <!-- Import Registrations (admin-only) -->
+  <div class="card admin-only" style="margin-top:1.5rem">
+    <h3>Player Registrations</h3>
+    <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem">
+      Pull in sign-ups from the join link. This sets up players and their first boot predictions.
+    </p>
+    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="fetchRegistrations()">Fetch Registrations</button>
+      <span id="regCount" style="font-size:0.85rem;color:var(--text-secondary)"></span>
+    </div>
+    <div id="regPreview" style="margin-top:1rem"></div>
+    <button class="btn btn-primary" id="importRegsBtn" onclick="importRegistrations()" style="display:none;margin-top:1rem">
+      Import All into League
+    </button>
   </div>
 </div>
 
@@ -2284,6 +2626,7 @@ const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzuvQDkZTKJByohRB
 // ===================== MODE DETECTION =====================
 const urlParams = new URLSearchParams(window.location.search);
 const IS_ADMIN = urlParams.get('mode') === 'admin';
+const IS_JOIN = urlParams.get('mode') === 'join';
 const AUTO_REFRESH_INTERVAL = 60000; // participants auto-refresh every 60s
 let _refreshTimer = null;
 
@@ -2360,6 +2703,26 @@ let state = {
 
 // ===================== INITIALIZATION =====================
 function init() {
+  // JOIN MODE — show registration flow, skip loading full app state
+  if (IS_JOIN) {
+    document.body.classList.add('join-mode');
+    const alreadyJoined = localStorage.getItem('survivor50_joined');
+    if (alreadyJoined) {
+      try {
+        const joinData = JSON.parse(alreadyJoined);
+        const castaway = DEFAULT_CASTAWAYS[joinData.castawayId];
+        document.getElementById('joinConfirmDetails').innerHTML = `
+          <div style="font-weight:700;color:var(--torch-orange);font-size:1.1rem;margin-bottom:0.3rem">${joinData.name}</div>
+          <div style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:0.8rem">${joinData.email}</div>
+          <div style="color:var(--text-secondary);font-size:0.85rem">Your first boot pick:</div>
+          <div style="font-weight:800;font-size:1.3rem;color:var(--torch-gold);margin-top:0.3rem">${castaway ? castaway.shortName : 'Unknown'}</div>
+        `;
+        joinGoToStep(4);
+      } catch(e) { /* corrupted localStorage, show fresh form */ }
+    }
+    return; // Don't load main app
+  }
+
   loadState();
   if (state.players.length === 0) {
     state.players = [
@@ -4523,6 +4886,239 @@ function hideCastawayHud() {
   _hudTimeout = setTimeout(() => {
     document.getElementById('castawayHud').classList.remove('visible');
   }, 100);
+}
+
+// ===================== JOIN MODE =====================
+let joinSelectedCastaway = null;
+
+function joinGoToStep(stepNum) {
+  document.querySelectorAll('.join-step').forEach(s => s.classList.remove('active'));
+  const step = document.getElementById('joinStep' + stepNum);
+  if (step) {
+    step.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  if (stepNum === 3) renderJoinCastGrid();
+}
+
+function joinValidateInfo() {
+  const name = document.getElementById('joinName').value.trim();
+  const email = document.getElementById('joinEmail').value.trim().toLowerCase();
+  const nameErr = document.getElementById('joinNameError');
+  const emailErr = document.getElementById('joinEmailError');
+  let valid = true;
+  nameErr.textContent = '';
+  emailErr.textContent = '';
+  document.getElementById('joinName').classList.remove('error');
+  document.getElementById('joinEmail').classList.remove('error');
+
+  if (!name || name.length < 1) {
+    nameErr.textContent = 'Please enter your name';
+    document.getElementById('joinName').classList.add('error');
+    valid = false;
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || !emailRegex.test(email)) {
+    emailErr.textContent = 'Please enter a valid email';
+    document.getElementById('joinEmail').classList.add('error');
+    valid = false;
+  }
+  if (valid) joinGoToStep(3);
+}
+
+function renderJoinCastGrid() {
+  const grid = document.getElementById('joinCastGrid');
+  const tribeColors = { Vatu: 'var(--vatu-purple)', Kalo: 'var(--kalo-teal)', Cila: 'var(--cila-orange)' };
+
+  grid.innerHTML = DEFAULT_CASTAWAYS.map((c, i) => {
+    const tribeColor = tribeColors[c.s50tribe] || 'var(--text-secondary)';
+    const avatarContent = c.photo
+      ? `<img src="${c.photo}" alt="${c.shortName}">`
+      : `<div style="font-size:1.2rem;font-weight:700;color:#fff">${c.initials}</div>`;
+    const isSelected = joinSelectedCastaway === i;
+    return `
+      <div class="join-cast-card ${isSelected ? 'selected' : ''}" data-castaway-id="${i}" onclick="joinSelectCastaway(${i})">
+        <div class="jc-avatar">${avatarContent}</div>
+        <div class="jc-name">${c.shortName}</div>
+        <div class="jc-tribe" style="color:${tribeColor}">${c.s50tribe || ''}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function joinSelectCastaway(id) {
+  joinSelectedCastaway = id;
+  document.querySelectorAll('.join-cast-card').forEach(card => {
+    card.classList.toggle('selected', parseInt(card.dataset.castawayId) === id);
+  });
+  document.getElementById('joinSubmitBtn').disabled = false;
+  document.getElementById('joinPickError').textContent = '';
+}
+
+async function joinSubmit() {
+  const name = document.getElementById('joinName').value.trim();
+  const email = document.getElementById('joinEmail').value.trim().toLowerCase();
+
+  if (joinSelectedCastaway === null) {
+    document.getElementById('joinPickError').textContent = 'Please pick a castaway';
+    return;
+  }
+
+  const btn = document.getElementById('joinSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+
+  try {
+    if (!SHEET_API_URL) throw new Error('Sheet API not configured');
+
+    const resp = await fetch(SHEET_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'register',
+        name: name,
+        email: email,
+        castawayId: joinSelectedCastaway
+      })
+    });
+
+    const data = await resp.json();
+
+    if (data.success) {
+      localStorage.setItem('survivor50_joined', JSON.stringify({
+        email: email,
+        name: name,
+        castawayId: joinSelectedCastaway,
+        timestamp: data.timestamp
+      }));
+
+      const castaway = DEFAULT_CASTAWAYS[joinSelectedCastaway];
+      document.getElementById('joinConfirmDetails').innerHTML = `
+        <div style="font-weight:700;color:var(--torch-orange);font-size:1.1rem;margin-bottom:0.3rem">${name}</div>
+        <div style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:0.8rem">${email}</div>
+        <div style="color:var(--text-secondary);font-size:0.85rem">Your first boot pick:</div>
+        <div style="font-weight:800;font-size:1.3rem;color:var(--torch-gold);margin-top:0.3rem">${castaway.shortName}</div>
+      `;
+      joinGoToStep(4);
+    } else if (data.error === 'duplicate') {
+      btn.textContent = 'Lock It In 🔥';
+      btn.disabled = false;
+      alert('This email has already been registered' +
+        (data.existingName ? ' by ' + data.existingName : '') +
+        '. Use a different email or contact the commissioner.');
+    } else {
+      throw new Error(data.error || 'Unknown error');
+    }
+  } catch (err) {
+    btn.textContent = 'Lock It In 🔥';
+    btn.disabled = false;
+    alert('Error submitting: ' + err.message + '\nPlease try again.');
+  }
+}
+
+function joinViewLeague() {
+  document.body.classList.remove('join-mode');
+  document.querySelector('.join-flow').style.display = 'none';
+  document.body.classList.add('participant-mode');
+
+  // Show nav and leaderboard
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-leaderboard').classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.page === 'leaderboard');
+  });
+
+  loadState();
+  if (state.players.length === 0) {
+    state.players = [
+      { name: 'Player 1', color: PLAYER_COLORS[0] },
+      { name: 'Player 2', color: PLAYER_COLORS[1] },
+      { name: 'Player 3', color: PLAYER_COLORS[2] },
+      { name: 'Player 4', color: PLAYER_COLORS[3] },
+      { name: 'Player 5', color: PLAYER_COLORS[4] },
+      { name: 'Player 6', color: PLAYER_COLORS[5] },
+      { name: 'Player 7', color: PLAYER_COLORS[6] },
+    ];
+  }
+  renderAll();
+  setupNav();
+  setupMode();
+}
+
+// ===================== COMMISSIONER: IMPORT REGISTRATIONS =====================
+let _pendingRegistrations = [];
+
+async function fetchRegistrations() {
+  if (!SHEET_API_URL) { alert('Sheet API not configured'); return; }
+
+  const countEl = document.getElementById('regCount');
+  countEl.textContent = 'Loading...';
+
+  try {
+    const resp = await fetch(SHEET_API_URL + '?action=registrations');
+    const data = await resp.json();
+    if (!data.success) throw new Error(data.error || 'Failed');
+
+    _pendingRegistrations = data.registrations || [];
+    countEl.textContent = _pendingRegistrations.length + ' registration(s) found';
+
+    const preview = document.getElementById('regPreview');
+    if (_pendingRegistrations.length === 0) {
+      preview.innerHTML = '<p style="color:var(--text-secondary)">No registrations yet. Share the join link!</p>';
+      document.getElementById('importRegsBtn').style.display = 'none';
+      return;
+    }
+
+    preview.innerHTML = `
+      <table class="reg-preview-table">
+        <thead><tr><th>Name</th><th>Email</th><th>First Boot Pick</th><th>Time</th></tr></thead>
+        <tbody>
+          ${_pendingRegistrations.map(r => {
+            const c = DEFAULT_CASTAWAYS[r.castawayId];
+            return `<tr>
+              <td>${r.name}</td>
+              <td style="color:var(--text-secondary);font-size:0.75rem">${r.email}</td>
+              <td style="color:var(--torch-gold)">${c ? c.shortName : 'ID:' + r.castawayId}</td>
+              <td style="color:var(--text-secondary);font-size:0.7rem">${r.timestamp ? new Date(r.timestamp).toLocaleString() : ''}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+    document.getElementById('importRegsBtn').style.display = '';
+  } catch (err) {
+    countEl.textContent = 'Error: ' + err.message;
+  }
+}
+
+function importRegistrations() {
+  if (_pendingRegistrations.length === 0) return;
+
+  if (!confirm('Import ' + _pendingRegistrations.length + ' player(s)? This will replace the current player list and prop bets.')) {
+    return;
+  }
+
+  state.players = _pendingRegistrations.map((r, i) => ({
+    name: r.name,
+    color: PLAYER_COLORS[i % PLAYER_COLORS.length]
+  }));
+
+  state.propBets = {};
+  _pendingRegistrations.forEach((r, i) => {
+    state.propBets[i] = r.castawayId;
+  });
+
+  // Reset draft state since player list changed
+  state.draftOrder = [];
+  state.draftPicks = [];
+  state.draftStarted = false;
+  state.draftComplete = false;
+
+  saveState();
+  renderAll();
+
+  alert('Imported ' + _pendingRegistrations.length + ' players! Review on Setup tab, then Publish when ready.');
+  document.getElementById('importRegsBtn').style.display = 'none';
 }
 
 // ===================== INIT =====================
