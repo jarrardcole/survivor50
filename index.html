@@ -2036,6 +2036,51 @@ body.join-mode .join-flow { display: block; }
 .reg-preview-table { width: 100%; font-size: 0.8rem; border-collapse: collapse; }
 .reg-preview-table th { text-align: left; padding: 0.4rem; border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary); font-weight: 600; }
 .reg-preview-table td { padding: 0.4rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+/* ==================== LOBBY STYLES ==================== */
+.lobby-your-pick {
+  background: rgba(232,117,26,0.12);
+  border: 1px solid rgba(232,117,26,0.3);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.2rem;
+  text-align: center;
+}
+.lobby-your-pick .lyp-label { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.3rem; }
+.lobby-your-pick .lyp-name { font-size: 1.1rem; font-weight: 800; color: var(--torch-gold); }
+.lobby-your-pick .lyp-pick { font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.3rem; }
+.lobby-your-pick .lyp-pick strong { color: var(--torch-orange); }
+
+.lobby-section-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  opacity: 0.7;
+}
+.lobby-players-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.lobby-player {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.7rem 0.9rem;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  border-left: 3px solid rgba(255,255,255,0.15);
+}
+.lobby-player-me {
+  background: rgba(232,117,26,0.08);
+  border-left-color: var(--torch-orange);
+}
+.lobby-player-name { font-weight: 600; font-size: 0.95rem; }
+.lobby-player-pick { font-size: 0.8rem; color: var(--text-secondary); }
+.lobby-player-me .lobby-player-pick { color: var(--torch-gold); font-weight: 700; }
+.lobby-loading { text-align: center; color: var(--text-secondary); padding: 2rem 0; }
 </style>
 </head>
 <body>
@@ -2308,8 +2353,23 @@ body.join-mode .join-flow { display: block; }
       </div>
       <div id="joinConfirmDetails" style="margin-bottom:1.5rem"></div>
       <button class="join-btn join-btn-primary" onclick="joinViewLeague()" style="font-size:0.9rem;padding:0.8rem">
-        View the League
+        See Who's Joined
       </button>
+    </div>
+  </div>
+
+  <!-- Step 5: Participant Lobby -->
+  <div class="join-step" id="joinStep5">
+    <div class="join-title" style="font-size:1.4rem">The League</div>
+    <div class="join-subtitle" style="margin-bottom:0.5rem">Season Premiere &mdash; Wed Feb 26</div>
+
+    <div id="lobbyYourPick" class="lobby-your-pick"></div>
+
+    <div class="lobby-section-label">Signed Up</div>
+    <div id="lobbyPlayersList" class="lobby-players-list"></div>
+
+    <div class="join-explainer" style="margin-top:1.5rem;font-size:0.8rem;opacity:0.7">
+      Everyone's first boot picks will be revealed when Episode 1 airs. Good luck! 🔥
     </div>
   </div>
 
@@ -2413,6 +2473,13 @@ body.join-mode .join-flow { display: block; }
       <select id="actualFirstBoot" onchange="resolveFirstBoot()" style="padding:0.5rem;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:var(--text-primary)">
         <option value="">-- Not yet revealed --</option>
       </select>
+    </div>
+    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.1)" class="admin-only">
+      <label style="font-size:0.85rem;color:var(--text-secondary);display:block;margin-bottom:0.5rem">Viewers can see everyone's picks?</label>
+      <button class="btn btn-secondary btn-sm" id="toggleRevealBtn" onclick="togglePropBetReveal()">
+        Loading...
+      </button>
+      <span style="font-size:0.75rem;color:var(--text-secondary);margin-left:0.5rem" id="revealStatus"></span>
     </div>
   </div>
 
@@ -2696,6 +2763,7 @@ let state = {
   mergeDraftComplete: false,
   episodes: {},
   propBets: {},
+  propBetsRevealed: false,
   actualFirstBoot: null,
   currentEpisode: 2,
   powerRankings: {},  // { episodeNum: "text" }
@@ -2709,15 +2777,9 @@ function init() {
     const alreadyJoined = localStorage.getItem('survivor50_joined');
     if (alreadyJoined) {
       try {
-        const joinData = JSON.parse(alreadyJoined);
-        const castaway = DEFAULT_CASTAWAYS[joinData.castawayId];
-        document.getElementById('joinConfirmDetails').innerHTML = `
-          <div style="font-weight:700;color:var(--torch-orange);font-size:1.1rem;margin-bottom:0.3rem">${joinData.name}</div>
-          <div style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:0.8rem">${joinData.email}</div>
-          <div style="color:var(--text-secondary);font-size:0.85rem">Your first boot pick:</div>
-          <div style="font-weight:800;font-size:1.3rem;color:var(--torch-gold);margin-top:0.3rem">${castaway ? castaway.shortName : 'Unknown'}</div>
-        `;
-        joinGoToStep(4);
+        JSON.parse(alreadyJoined); // validate it's valid JSON
+        // Returning user — go straight to lobby
+        joinViewLeague();
       } catch(e) { /* corrupted localStorage, show fresh form */ }
     }
     return; // Don't load main app
@@ -2998,17 +3060,36 @@ function renderDraftOrderPreview() {
 function renderPropBet() {
   const grid = document.getElementById('propBetGrid');
   const select = document.getElementById('actualFirstBoot');
+  const revealed = IS_ADMIN || state.propBetsRevealed;
 
   grid.innerHTML = state.players.map((p, i) => {
     const pick = state.propBets[i] || '';
     const result = getFirstBootResult(i);
+
+    // Commissioner always sees dropdowns; viewers see locked/revealed text
+    if (IS_ADMIN) {
+      return `
+        <div class="prop-bet-card" style="border-left:4px solid ${p.color}">
+          <div class="player-name" style="color:${p.color}">${p.name}</div>
+          <select onchange="setPropBet(${i}, this.value)">
+            <option value="">-- Pick --</option>
+            ${state.castaways.map(c => `<option value="${c.id}" ${pick == c.id ? 'selected' : ''}>${c.shortName}</option>`).join('')}
+          </select>
+          ${result}
+        </div>
+      `;
+    }
+
+    // Viewer mode
+    const castaway = pick !== '' ? state.castaways.find(c => c.id == pick) : null;
+    const pickDisplay = revealed
+      ? (castaway ? `<span style="color:var(--torch-gold);font-weight:700">${castaway.shortName}</span>` : '<span style="color:var(--text-secondary)">No pick</span>')
+      : '<span style="color:var(--text-secondary)">🔒 Pick Locked</span>';
+
     return `
       <div class="prop-bet-card" style="border-left:4px solid ${p.color}">
         <div class="player-name" style="color:${p.color}">${p.name}</div>
-        <select onchange="setPropBet(${i}, this.value)" ${!IS_ADMIN ? 'disabled' : ''}>
-          <option value="">-- Pick --</option>
-          ${state.castaways.map(c => `<option value="${c.id}" ${pick == c.id ? 'selected' : ''}>${c.shortName}</option>`).join('')}
-        </select>
+        <div style="padding:0.3rem 0;font-size:0.9rem">${pickDisplay}</div>
         ${result}
       </div>
     `;
@@ -3017,6 +3098,9 @@ function renderPropBet() {
   // Populate actual first boot select
   select.innerHTML = '<option value="">-- Not yet revealed --</option>' +
     state.castaways.map(c => `<option value="${c.id}" ${state.actualFirstBoot == c.id ? 'selected' : ''}>${c.shortName}</option>`).join('');
+
+  // Update reveal toggle button state
+  updateRevealButton();
 }
 
 function setPropBet(playerIdx, castawayId) {
@@ -3030,6 +3114,32 @@ function resolveFirstBoot() {
   renderPropBet();
   renderLeaderboard();
   saveState();
+}
+
+function togglePropBetReveal() {
+  state.propBetsRevealed = !state.propBetsRevealed;
+  saveState();
+  renderPropBet();
+  updateRevealButton();
+}
+
+function updateRevealButton() {
+  const btn = document.getElementById('toggleRevealBtn');
+  const status = document.getElementById('revealStatus');
+  if (!btn) return;
+  if (state.propBetsRevealed) {
+    btn.textContent = 'Hide Picks';
+    btn.style.background = 'rgba(232,117,26,0.2)';
+    btn.style.borderColor = 'var(--torch-orange)';
+    status.textContent = 'Picks are visible to everyone';
+    status.style.color = 'var(--torch-gold)';
+  } else {
+    btn.textContent = 'Reveal Picks';
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    status.textContent = 'Picks are hidden from viewers';
+    status.style.color = 'var(--text-secondary)';
+  }
 }
 
 function getFirstBootResult(playerIdx) {
@@ -5016,33 +5126,53 @@ async function joinSubmit() {
   }
 }
 
-function joinViewLeague() {
-  document.body.classList.remove('join-mode');
-  document.querySelector('.join-flow').style.display = 'none';
-  document.body.classList.add('participant-mode');
+async function joinViewLeague() {
+  // Show the lobby step (Step 5) — stays in join-mode, fetches live registrations
+  joinGoToStep(5);
 
-  // Show nav and leaderboard
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-leaderboard').classList.add('active');
-  document.querySelectorAll('.tab').forEach(t => {
-    t.classList.toggle('active', t.dataset.page === 'leaderboard');
-  });
+  const joinData = JSON.parse(localStorage.getItem('survivor50_joined') || '{}');
+  const myEmail = (joinData.email || '').toLowerCase();
 
-  loadState();
-  if (state.players.length === 0) {
-    state.players = [
-      { name: 'Player 1', color: PLAYER_COLORS[0] },
-      { name: 'Player 2', color: PLAYER_COLORS[1] },
-      { name: 'Player 3', color: PLAYER_COLORS[2] },
-      { name: 'Player 4', color: PLAYER_COLORS[3] },
-      { name: 'Player 5', color: PLAYER_COLORS[4] },
-      { name: 'Player 6', color: PLAYER_COLORS[5] },
-      { name: 'Player 7', color: PLAYER_COLORS[6] },
-    ];
+  // Show "Your Pick" card
+  const yourPickEl = document.getElementById('lobbyYourPick');
+  if (joinData.name) {
+    const myCastaway = DEFAULT_CASTAWAYS[joinData.castawayId];
+    yourPickEl.innerHTML = `
+      <div class="lyp-label">Your First Boot Pick</div>
+      <div class="lyp-name">${joinData.name}</div>
+      <div class="lyp-pick">You picked: <strong>${myCastaway ? myCastaway.shortName : '?'}</strong></div>
+    `;
   }
-  renderAll();
-  setupNav();
-  setupMode();
+
+  // Fetch registrations from Sheet
+  const lobbyList = document.getElementById('lobbyPlayersList');
+  lobbyList.innerHTML = '<div class="lobby-loading">Loading registrations...</div>';
+
+  try {
+    if (!SHEET_API_URL) throw new Error('Not configured');
+    const resp = await fetch(SHEET_API_URL + '?action=registrations');
+    const data = await resp.json();
+    if (!data.success) throw new Error(data.error);
+
+    const regs = data.registrations || [];
+    if (regs.length === 0) {
+      lobbyList.innerHTML = '<div class="lobby-loading">You\'re the first one here! Share the link.</div>';
+      return;
+    }
+
+    lobbyList.innerHTML = regs.map(r => {
+      const isMe = r.email && r.email.toString().toLowerCase() === myEmail;
+      const castaway = DEFAULT_CASTAWAYS[r.castawayId];
+      return `
+        <div class="lobby-player ${isMe ? 'lobby-player-me' : ''}">
+          <div class="lobby-player-name">${r.name}${isMe ? ' (you)' : ''}</div>
+          <div class="lobby-player-pick">${isMe ? (castaway ? castaway.shortName : '?') : '🔒 Pick Locked'}</div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    lobbyList.innerHTML = '<div class="lobby-loading">Could not load registrations.</div>';
+  }
 }
 
 // ===================== COMMISSIONER: IMPORT REGISTRATIONS =====================
