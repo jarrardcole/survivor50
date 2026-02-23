@@ -2201,8 +2201,10 @@ h3 { font-size: 1.2rem; margin-bottom: 0.8rem; color: var(--torch-gold); }
         <tbody></tbody>
       </table>
     </div>
-    <div style="margin-top:1rem; display:flex; gap:0.5rem" class="admin-only">
+    <div style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center" class="admin-only">
       <button class="btn btn-primary" onclick="saveEpisodeScoring()">Save Episode Scores</button>
+      <button class="btn" style="background:var(--tribe-kalo);color:#000;font-weight:700" onclick="importEpisodeData()">⬇ Import Episode Data</button>
+      <span id="importStatus" style="font-size:0.75rem;color:var(--text-secondary)"></span>
     </div>
   </div>
 </div>
@@ -3315,6 +3317,237 @@ function updateScore(ep, castawayId, key, value) {
   if (!state.episodes[ep][castawayId]) state.episodes[ep][castawayId] = {};
   state.episodes[ep][castawayId][key] = value;
   saveState();
+}
+
+// ===================== EPISODE DATA IMPORT (survivoR JSON) =====================
+const SURVIVOR_JSON_BASE = 'https://raw.githubusercontent.com/doehm/survivoR/master/dev/json/';
+const SURVIVOR_SEASON = 50;
+
+// Name mapping: survivoR package name → app castaway name
+// The survivoR package may use different name formats, update this map as needed
+const CASTAWAY_NAME_MAP = {
+  'Jenna': 'Jenna Lewis-Dougherty',
+  'Colby': 'Colby Donaldson',
+  'Stephenie': 'Stephenie LaGrossa',
+  'Cirie': 'Cirie Fields',
+  'Ozzy': 'Ozzy Lusth',
+  'Coach': 'Coach Wade',
+  'Benjamin': 'Coach Wade',
+  'Aubry': 'Aubry Bracco',
+  'Chrissy': 'Chrissy Hofbeck',
+  'Christian': 'Christian Hubicki',
+  'Angelina': 'Angelina Keeley',
+  'Mike': 'Mike White',
+  'Rick': 'Rick Devens',
+  'Devens': 'Rick Devens',
+  'Jonathan': 'Jonathan Young',
+  'Dee': 'Dee Valladares',
+  'Emily': 'Emily Flippen',
+  'Q': 'Q Burdette',
+  'Tiffany': 'Tiffany Ervin',
+  'Charlie': 'Charlie Davis',
+  'Genevieve': 'Genevieve Mushaluk',
+  'Kamilla': 'Kamilla Karthigesu',
+  'Kyle': 'Kyle Fraser',
+  'Joe': 'Joe Hunter',
+  'Savannah': 'Savannah Louie',
+  'Rizo': 'Rizo Velovic',
+};
+
+function findCastawayByJsonName(jsonName) {
+  if (!jsonName) return null;
+  // Try exact match on full name
+  let match = state.castaways.find(c => c.name.toLowerCase() === jsonName.toLowerCase());
+  if (match) return match;
+  // Try name map
+  const mapped = CASTAWAY_NAME_MAP[jsonName];
+  if (mapped) {
+    match = state.castaways.find(c => c.name === mapped);
+    if (match) return match;
+  }
+  // Try shortName match
+  match = state.castaways.find(c => c.shortName.toLowerCase() === jsonName.toLowerCase());
+  if (match) return match;
+  // Try last name match
+  match = state.castaways.find(c => c.name.toLowerCase().includes(jsonName.toLowerCase()));
+  if (match) return match;
+  // Try first name from full name
+  const firstName = jsonName.split(' ')[0];
+  match = state.castaways.find(c => c.shortName.toLowerCase() === firstName.toLowerCase());
+  if (match) return match;
+  return null;
+}
+
+async function fetchJsonData(filename) {
+  const resp = await fetch(SURVIVOR_JSON_BASE + filename);
+  if (!resp.ok) throw new Error(`Failed to fetch ${filename}: ${resp.status}`);
+  return resp.json();
+}
+
+async function importEpisodeData() {
+  const ep = state.currentEpisode;
+  const statusEl = document.getElementById('importStatus');
+  statusEl.textContent = 'Fetching data from survivoR database...';
+  statusEl.style.color = 'var(--tribe-kalo)';
+
+  try {
+    // Fetch all needed JSON files in parallel
+    const [voteHistory, advantageMovement, advantageDetails, challengeResults, confessionals] = await Promise.all([
+      fetchJsonData('vote_history.json'),
+      fetchJsonData('advantage_movement.json'),
+      fetchJsonData('advantage_details.json'),
+      fetchJsonData('challenge_results.json'),
+      fetchJsonData('confessionals.json'),
+    ]);
+
+    // Filter to Season 50 and current episode
+    const s50Votes = voteHistory.filter(r => r.version === 'US' && r.season === SURVIVOR_SEASON && r.episode === ep);
+    const s50AdvMoves = advantageMovement.filter(r => r.version === 'US' && r.season === SURVIVOR_SEASON && r.episode === ep);
+    const s50AdvDetails = advantageDetails.filter(r => r.version === 'US' && r.season === SURVIVOR_SEASON);
+    const s50Challenges = challengeResults.filter(r => r.version === 'US' && r.season === SURVIVOR_SEASON && r.episode === ep);
+    const s50Confessionals = confessionals.filter(r => r.version === 'US' && r.season === SURVIVOR_SEASON && r.episode === ep);
+
+    // Also get all votes for season to detect merge
+    const s50AllVotes = voteHistory.filter(r => r.version === 'US' && r.season === SURVIVOR_SEASON);
+
+    if (s50Votes.length === 0 && s50Challenges.length === 0 && s50Confessionals.length === 0) {
+      statusEl.textContent = `No data found for Season ${SURVIVOR_SEASON} Episode ${ep}. Data may not be available yet.`;
+      statusEl.style.color = 'var(--tribe-cila)';
+      return;
+    }
+
+    // Initialize episode data
+    if (!state.episodes[ep]) state.episodes[ep] = {};
+    let importCount = 0;
+
+    // --- SURVIVED TRIBAL COUNCIL ---
+    if (s50Votes.length > 0) {
+      const votedOutNames = [...new Set(s50Votes.map(r => r.voted_out).filter(Boolean))];
+      const attendees = [...new Set(s50Votes.map(r => r.castaway))];
+
+      attendees.forEach(name => {
+        const c = findCastawayByJsonName(name);
+        if (!c) return;
+        if (!state.episodes[ep][c.id]) state.episodes[ep][c.id] = {};
+        // If they voted but weren't voted out, they survived tribal
+        if (!votedOutNames.includes(name)) {
+          state.episodes[ep][c.id].survives = true;
+          importCount++;
+        }
+      });
+
+      // Mark eliminated castaways
+      votedOutNames.forEach(name => {
+        const c = findCastawayByJsonName(name);
+        if (c && !c.eliminatedEp) {
+          c.eliminatedEp = ep;
+          c.status = 'eliminated';
+        }
+      });
+    }
+
+    // --- INDIVIDUAL IMMUNITY WINS ---
+    s50Challenges.forEach(r => {
+      if (r.won_individual_immunity === 1) {
+        const c = findCastawayByJsonName(r.castaway);
+        if (!c) return;
+        if (!state.episodes[ep][c.id]) state.episodes[ep][c.id] = {};
+        state.episodes[ep][c.id].immunityWin = true;
+        importCount++;
+      }
+    });
+
+    // --- IDOL/ADVANTAGE FINDS AND PLAYS ---
+    // Build advantage type lookup
+    const advTypeLookup = {};
+    s50AdvDetails.forEach(d => { advTypeLookup[d.advantage_id] = d.advantage_type; });
+
+    s50AdvMoves.forEach(r => {
+      const c = findCastawayByJsonName(r.castaway);
+      if (!c) return;
+      if (!state.episodes[ep][c.id]) state.episodes[ep][c.id] = {};
+      const advType = advTypeLookup[r.advantage_id] || '';
+      const isIdol = advType.toLowerCase().includes('idol');
+
+      if (r.event && r.event.toLowerCase().includes('found')) {
+        if (isIdol) {
+          state.episodes[ep][c.id].findIdol = true;
+        } else {
+          state.episodes[ep][c.id].findAdvantage = true;
+        }
+        importCount++;
+      }
+      if (r.event === 'Played') {
+        if (isIdol) {
+          state.episodes[ep][c.id].playIdol = true;
+        } else {
+          state.episodes[ep][c.id].playAdvantage = true;
+        }
+        importCount++;
+      }
+      // Idol in pocket (voted out with idol)
+      if (r.event && r.event.toLowerCase().includes('voted out')) {
+        if (isIdol) {
+          state.episodes[ep][c.id].idolPocket = true;
+          importCount++;
+        }
+      }
+    });
+
+    // --- MERGE DETECTION ---
+    const mergeVotes = s50AllVotes.filter(r => r.tribe_status === 'Merged');
+    if (mergeVotes.length > 0) {
+      const mergeEp = Math.min(...mergeVotes.map(r => r.episode));
+      if (ep === mergeEp) {
+        const mergedCastaways = [...new Set(mergeVotes.filter(r => r.episode === mergeEp).map(r => r.castaway))];
+        mergedCastaways.forEach(name => {
+          const c = findCastawayByJsonName(name);
+          if (!c) return;
+          if (!state.episodes[ep][c.id]) state.episodes[ep][c.id] = {};
+          state.episodes[ep][c.id].makesMerge = true;
+          importCount++;
+        });
+      }
+    }
+
+    // --- FIREMAKING (check vote_event field) ---
+    s50Votes.forEach(r => {
+      if (r.vote_event && r.vote_event.toLowerCase().includes('fire')) {
+        // The person who survived the fire-making challenge
+        const votedOut = r.voted_out;
+        if (r.castaway !== votedOut) {
+          const c = findCastawayByJsonName(r.castaway);
+          if (c) {
+            if (!state.episodes[ep][c.id]) state.episodes[ep][c.id] = {};
+            state.episodes[ep][c.id].firemaking = true;
+            importCount++;
+          }
+        }
+      }
+    });
+
+    // --- CONFESSIONAL COUNT LEADER (bonus) ---
+    if (s50Confessionals.length > 0) {
+      const maxConf = Math.max(...s50Confessionals.map(r => r.confessional_count || 0));
+      if (maxConf > 0) {
+        const leaders = s50Confessionals.filter(r => r.confessional_count === maxConf);
+        // Note: confessional leader is a season-end award, not per-episode
+        // We'll track it but the commissioner can decide when to apply it
+      }
+    }
+
+    // Save and re-render
+    saveState();
+    renderScoring();
+
+    statusEl.textContent = `✓ Imported ${importCount} scoring events for Episode ${ep}. Review and save!`;
+    statusEl.style.color = '#4CAF50';
+
+  } catch (err) {
+    statusEl.textContent = `Import error: ${err.message}`;
+    statusEl.style.color = '#ff5252';
+    console.error('Episode data import error:', err);
+  }
 }
 
 function saveEpisodeScoring() {
