@@ -2774,6 +2774,14 @@ function init() {
   // JOIN MODE — show registration flow, skip loading full app state
   if (IS_JOIN) {
     document.body.classList.add('join-mode');
+
+    // ?mode=join&reset=true — clear registration and start fresh
+    if (urlParams.get('reset') === 'true') {
+      localStorage.removeItem('survivor50_joined');
+      // Clean the URL so refreshing doesn't re-reset
+      window.history.replaceState({}, '', window.location.pathname + '?mode=join');
+    }
+
     const alreadyJoined = localStorage.getItem('survivor50_joined');
     if (alreadyJoined) {
       try {
