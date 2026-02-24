@@ -118,14 +118,21 @@ function handleRegistration(payload) {
     })).setMimeType(ContentService.MimeType.JSON);
   }
 
-  // Check for duplicate email
+  // Check for duplicate email or duplicate name
   var data = sheet.getDataRange().getValues();
+  var nameLower = name.toLowerCase();
   for (var i = 1; i < data.length; i++) {
     if (data[i][1] && data[i][1].toString().trim().toLowerCase() === email) {
       return ContentService.createTextOutput(JSON.stringify({
         success: false,
         error: 'duplicate',
         existingName: data[i][0]
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    if (data[i][0] && data[i][0].toString().trim().toLowerCase() === nameLower) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: 'duplicate_name'
       })).setMimeType(ContentService.MimeType.JSON);
     }
   }

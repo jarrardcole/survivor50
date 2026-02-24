@@ -5124,6 +5124,10 @@ async function joinSubmit() {
       alert('This email has already been registered' +
         (data.existingName ? ' by ' + data.existingName : '') +
         '. Use a different email or contact the commissioner.');
+    } else if (data.error === 'duplicate_name') {
+      btn.textContent = 'Lock It In 🔥';
+      btn.disabled = false;
+      alert('Someone already registered with that name. Please use a unique name (e.g., "Matt S." or "Matt Smith") so we can tell everyone apart.');
     } else {
       throw new Error(data.error || 'Unknown error');
     }
