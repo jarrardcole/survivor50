@@ -2938,6 +2938,7 @@ async function publishToSheet() {
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ state: stateForSheet() })
     });
+    if (!resp.ok) throw new Error('Server returned ' + resp.status);
     const data = await resp.json();
     if (data.success) {
       setSyncStatus('connected', 'Published ' + new Date().toLocaleTimeString());
@@ -2954,6 +2955,7 @@ async function fetchFromSheet() {
   setSyncStatus('syncing', 'Loading...');
   try {
     const resp = await fetch(SHEET_API_URL);
+    if (!resp.ok) throw new Error('Server returned ' + resp.status);
     const data = await resp.json();
     if (data.success && data.state) {
       const parsed = typeof data.state === 'string' ? JSON.parse(data.state) : data.state;
@@ -3191,6 +3193,13 @@ function getSnakeDraftOrder() {
 
 function startDraft() {
   if (state.draftOrder.length === 0) { alert('Please randomize the draft order first!'); return; }
+  if (state.draftStarted && state.draftPicks.length > 0) {
+    if (!confirm('The draft is already in progress with ' + state.draftPicks.length + ' pick(s). Restart from scratch? This cannot be undone.')) return;
+  } else if (state.draftComplete) {
+    if (!confirm('The draft is already complete. Start a brand new draft? This will wipe all picks.')) return;
+  } else {
+    if (!confirm('Start the draft? Make sure all players are set up first.')) return;
+  }
   state.draftStarted = true;
   state.draftPicks = [];
   state.castaways.forEach(c => { c.pickedBy = []; });
@@ -3639,12 +3648,11 @@ function getPlayerTotalPoints(playerIdx) {
 
   // Points from merge pick (only from merge episode onwards)
   const mergePicks = getPlayerMergePick(playerIdx);
+  const mergeStartEp = state.settings.mergeTrigger || 9;
   mergePicks.forEach(c => {
-    // Find which episode this merge pick was made (approximate: when merge trigger hit)
-    // For simplicity, count all points from the castaway but only post-merge episodes
-    for (let ep = state.settings.scoringStartEp; ep <= 20; ep++) {
-      // Only count merge pick points if they were drafted via merge
-      if (!castaways.find(dc => dc.id === c.id)) {
+    // Only count points from the merge episode onward, and only if not already on the player's main roster
+    if (!castaways.find(dc => dc.id === c.id)) {
+      for (let ep = mergeStartEp; ep <= 20; ep++) {
         total += getCastawayEpisodePoints(c.id, ep);
       }
     }
@@ -5112,6 +5120,7 @@ async function joinSubmit() {
         castawayId: joinSelectedCastaway
       })
     });
+    if (!resp.ok) throw new Error('Server returned ' + resp.status);
 
     const data = await resp.json();
 
@@ -5164,6 +5173,7 @@ async function joinLookup() {
   try {
     if (!SHEET_API_URL) throw new Error('Not configured');
     const resp = await fetch(SHEET_API_URL + '?action=registrations');
+    if (!resp.ok) throw new Error('Server returned ' + resp.status);
     const data = await resp.json();
     if (!data.success) throw new Error(data.error);
 
@@ -5213,6 +5223,7 @@ async function joinViewLeague() {
   try {
     if (!SHEET_API_URL) throw new Error('Not configured');
     const resp = await fetch(SHEET_API_URL + '?action=registrations');
+    if (!resp.ok) throw new Error('Server returned ' + resp.status);
     const data = await resp.json();
     if (!data.success) throw new Error(data.error);
 
@@ -5248,6 +5259,7 @@ async function fetchRegistrations() {
 
   try {
     const resp = await fetch(SHEET_API_URL + '?action=registrations');
+    if (!resp.ok) throw new Error('Server returned ' + resp.status);
     const data = await resp.json();
     if (!data.success) throw new Error(data.error || 'Failed');
 
