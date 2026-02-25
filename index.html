@@ -2314,6 +2314,9 @@ body.join-mode .join-flow { display: block; }
     <button class="join-btn join-btn-primary" onclick="joinGoToStep(2)">
       Join the League
     </button>
+    <div style="margin-top:1rem;font-size:0.8rem">
+      <a href="#" onclick="joinGoToStep(6);return false" style="color:var(--text-secondary);text-decoration:underline;opacity:0.7">Already registered?</a>
+    </div>
   </div>
 
   <!-- Step 2: Name + Email -->
@@ -2356,6 +2359,16 @@ body.join-mode .join-flow { display: block; }
         See Who's Joined
       </button>
     </div>
+  </div>
+
+  <!-- Step 6: Already Registered Lookup -->
+  <div class="join-step" id="joinStep6">
+    <div class="join-title" style="font-size:1.4rem">Welcome Back</div>
+    <div class="join-subtitle">Enter your email to find your registration</div>
+    <input type="email" class="join-input" id="joinLookupEmail" placeholder="Email address" autocomplete="email" inputmode="email">
+    <div class="join-error" id="joinLookupError"></div>
+    <button class="join-btn join-btn-primary" onclick="joinLookup()">Find Me</button>
+    <button class="join-btn join-btn-secondary" onclick="joinGoToStep(1)">Back</button>
   </div>
 
   <!-- Step 5: Participant Lobby -->
@@ -5135,6 +5148,43 @@ async function joinSubmit() {
     btn.textContent = 'Lock It In 🔥';
     btn.disabled = false;
     alert('Error submitting: ' + err.message + '\nPlease try again.');
+  }
+}
+
+async function joinLookup() {
+  const email = document.getElementById('joinLookupEmail').value.trim().toLowerCase();
+  const errEl = document.getElementById('joinLookupError');
+  errEl.textContent = '';
+
+  if (!email || !email.includes('@')) {
+    errEl.textContent = 'Please enter a valid email address';
+    return;
+  }
+
+  try {
+    if (!SHEET_API_URL) throw new Error('Not configured');
+    const resp = await fetch(SHEET_API_URL + '?action=registrations');
+    const data = await resp.json();
+    if (!data.success) throw new Error(data.error);
+
+    const match = (data.registrations || []).find(r =>
+      r.email && r.email.toString().trim().toLowerCase() === email
+    );
+
+    if (match) {
+      // Found! Store in localStorage so lobby works, then show lobby
+      localStorage.setItem('survivor50_joined', JSON.stringify({
+        email: email,
+        name: match.name,
+        castawayId: match.castawayId,
+        timestamp: match.timestamp
+      }));
+      joinViewLeague();
+    } else {
+      errEl.textContent = 'No registration found for that email. Try signing up!';
+    }
+  } catch (err) {
+    errEl.textContent = 'Could not check registrations. Please try again.';
   }
 }
 
