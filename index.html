@@ -4666,11 +4666,14 @@ function renderPowerRankings() {
   }
 
   if (ranking) {
+    // Convert newlines to paragraphs for readability
+    let html = ranking.split(/\n\n+/).map(para =>
+      `<p style="margin:0.5rem 0">${para.trim()}</p>`
+    ).join('');
     // Highlight player names in the text
-    let html = ranking;
     state.players.forEach(p => {
       html = html.replace(new RegExp('\\b' + p.name + '\\b', 'g'),
-        `<span class="pr-highlight" style="color:${p.color}">${p.name}</span>`);
+        `<span class="pr-highlight" style="color:${p.color};font-weight:700">${p.name}</span>`);
     });
     // Highlight castaway shortNames
     state.castaways.forEach(c => {
