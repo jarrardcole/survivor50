@@ -1088,6 +1088,51 @@ h3 { font-size: 1.2rem; margin-bottom: 0.8rem; color: var(--torch-gold); }
   margin-bottom: 0.3rem;
 }
 
+/* Player HUD popup */
+.player-hud {
+  position: fixed;
+  z-index: 5000;
+  background: linear-gradient(145deg, #1A2E1A 0%, #0F1A0F 100%);
+  border: 1px solid rgba(245,200,66,0.2);
+  border-radius: 10px;
+  padding: 0;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 20px rgba(232,117,26,0.1);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  width: 220px;
+  overflow: hidden;
+}
+.player-hud.visible { opacity: 1; }
+.player-hud-body { padding: 0.7rem; }
+.player-hud-name { font-weight: 900; font-size: 1rem; margin-bottom: 0.3rem; }
+.player-hud-rank { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.4rem; }
+.player-hud-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem;
+  margin-bottom: 0.4rem;
+}
+.player-hud-stat .stat-label {
+  color: var(--text-secondary);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.player-hud-stat .stat-value {
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+}
+.player-hud-roster { display: flex; gap: 0.2rem; flex-wrap: wrap; }
+.player-hud-roster .hud-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #fff;
+}
+
 .trend-up { color: #4caf50; }
 .trend-down { color: #f44336; }
 .trend-same { color: var(--text-secondary); }
@@ -3706,7 +3751,7 @@ function renderLeaderboard() {
       <div class="rank ${rank === 0 ? 'first' : ''}">${rank + 1}</div>
       <div class="player-info">
         <div class="player-name-row">
-          <div class="player-name" style="color:${s.color}">${s.name}</div>
+          <div class="player-name" style="color:${s.color};cursor:pointer" data-player-idx="${s.playerIdx}" onmouseenter="showPlayerHud(event, ${s.playerIdx})" onmouseleave="hidePlayerHud()">${s.name}</div>
           <div class="score" style="color:${s.color}">${s.points}</div>${winPct > 0 ? `<span class="win-prob" style="color:${s.color}">${winPct}% win</span>` : ''}
         </div>
         <div class="player-castaways">
@@ -3740,7 +3785,7 @@ function renderLeaderboard() {
     const totalPts = getPlayerTotalPoints(i);
 
     return `<div class="tribe-card" style="border-left-color:${p.color}">
-      <div class="tribe-player" style="color:${p.color}">${p.name} <span style="float:right;font-size:1.5rem;color:var(--torch-gold)">${totalPts}</span></div>
+      <div class="tribe-player" style="color:${p.color};cursor:pointer" data-player-idx="${i}" onmouseenter="showPlayerHud(event, ${i})" onmouseleave="hidePlayerHud()">${p.name} <span style="float:right;font-size:1.5rem;color:var(--torch-gold)">${totalPts}</span></div>
       ${memberHtml || '<div style="color:var(--text-secondary);font-size:0.85rem">No castaways drafted yet</div>'}
     </div>`;
   }).join('');
@@ -4670,10 +4715,11 @@ function renderPowerRankings() {
     let html = ranking.split(/\n\n+/).map(para =>
       `<p style="margin:0.5rem 0">${para.trim()}</p>`
     ).join('');
-    // Highlight player names in the text
-    state.players.forEach(p => {
-      html = html.replace(new RegExp('\\b' + p.name + '\\b', 'g'),
-        `<span class="pr-highlight" style="color:${p.color};font-weight:700">${p.name}</span>`);
+    // Highlight player names in the text (escape regex special chars for names with quotes etc.)
+    state.players.forEach((p, pi) => {
+      const escaped = p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      html = html.replace(new RegExp('(?<![\\w])' + escaped + '(?![\\w])', 'g'),
+        `<span class="pr-highlight" data-player-idx="${pi}" style="color:${p.color};font-weight:700;cursor:pointer" onmouseenter="showPlayerHud(event, ${pi})" onmouseleave="hidePlayerHud()">${p.name}</span>`);
     });
     // Highlight castaway shortNames
     state.castaways.forEach(c => {
@@ -5058,36 +5104,131 @@ function hideCastawayHud() {
   }, 100);
 }
 
-// Mobile tap support for castaway HUD — works on Leaderboard, Cast, Scoring, etc.
-// Does NOT interfere with Draft pick buttons (those use a different onclick handler)
-let _hudTapActive = null;
-document.addEventListener('click', function(e) {
-  const pill = e.target.closest('[data-castaway-id]');
-  const hud = document.getElementById('castawayHud');
+// ===================== PLAYER HUD =====================
+let _playerHudTimeout;
 
-  // If tapping outside a castaway pill, dismiss the HUD
-  if (!pill && !e.target.closest('.castaway-hud')) {
-    if (hud) hud.classList.remove('visible');
+function showPlayerHud(event, playerIdx) {
+  clearTimeout(_playerHudTimeout);
+  const p = state.players[playerIdx];
+  if (!p) return;
+
+  // Hide castaway HUD if open
+  document.getElementById('castawayHud').classList.remove('visible');
+
+  const hud = document.getElementById('playerHud');
+  document.getElementById('pHudName').textContent = p.name;
+  document.getElementById('pHudName').style.color = p.color;
+
+  // Rank
+  const standings = state.players.map((pl, i) => ({ idx: i, pts: getPlayerTotalPoints(i) }))
+    .sort((a, b) => b.pts - a.pts);
+  const rank = standings.findIndex(s => s.idx === playerIdx) + 1;
+  const pts = getPlayerTotalPoints(playerIdx);
+  document.getElementById('pHudRank').textContent = rank > 0 ? `Rank #${rank} of ${state.players.length}` : '';
+
+  // Stats
+  const propPick = state.propBets[playerIdx];
+  const propCastaway = propPick != null ? state.castaways[parseInt(propPick)] : null;
+  const propBonus = getPropBetBonus(playerIdx);
+  const castaways = getPlayerCastaways(playerIdx);
+  const mergePicks = getPlayerMergePick(playerIdx);
+
+  let statsHtml = `
+    <div class="player-hud-stat"><div class="stat-label">Points</div><div class="stat-value" style="color:var(--torch-gold)">${pts}</div></div>
+    <div class="player-hud-stat"><div class="stat-label">Prop Bet</div><div class="stat-value">${propCastaway ? propCastaway.shortName : '—'}${propBonus > 0 ? ' ✅' : (state.actualFirstBoot !== null && propCastaway ? ' ❌' : '')}</div></div>
+  `;
+  if (castaways.length > 0) {
+    const activeCt = castaways.filter(c => c.status === 'active').length;
+    statsHtml += `<div class="player-hud-stat"><div class="stat-label">Roster</div><div class="stat-value">${castaways.length} drafted</div></div>`;
+    statsHtml += `<div class="player-hud-stat"><div class="stat-label">Active</div><div class="stat-value" style="color:var(--jungle-green)">${activeCt}</div></div>`;
+  }
+  document.getElementById('pHudStats').innerHTML = statsHtml;
+
+  // Roster pills
+  const rosterHtml = castaways.map(c => {
+    const isElim = c.status === 'eliminated';
+    return `<span class="hud-badge" style="background:${isElim ? '#555' : 'var(--jungle-green)'}">${c.shortName}</span>`;
+  }).join('');
+  const mergeHtml = mergePicks.filter(c => !castaways.find(dc => dc.id === c.id)).map(c => {
+    const isElim = c.status === 'eliminated';
+    return `<span class="hud-badge" style="background:${isElim ? '#555' : 'var(--ocean-blue)'}">${c.shortName}</span>`;
+  }).join('');
+  document.getElementById('pHudRoster').innerHTML = rosterHtml + mergeHtml || '<span style="font-size:0.65rem;color:var(--text-secondary)">No castaways drafted yet</span>';
+
+  // Position
+  const rect = event.target.getBoundingClientRect();
+  let x = rect.left + rect.width / 2;
+  let y = rect.bottom + 8;
+  if (x + 220 > window.innerWidth) x = window.innerWidth - 230;
+  if (x < 10) x = 10;
+  if (y + 250 > window.innerHeight) y = rect.top - 250;
+
+  hud.style.left = x + 'px';
+  hud.style.top = y + 'px';
+  hud.classList.add('visible');
+}
+
+function hidePlayerHud() {
+  _playerHudTimeout = setTimeout(() => {
+    document.getElementById('playerHud').classList.remove('visible');
+  }, 100);
+}
+
+// Mobile tap support for castaway & player HUDs
+let _hudTapActive = null;
+let _hudTapType = null; // 'castaway' or 'player'
+document.addEventListener('click', function(e) {
+  const castawayPill = e.target.closest('[data-castaway-id]');
+  const playerPill = e.target.closest('[data-player-idx]');
+  const castawayHud = document.getElementById('castawayHud');
+  const playerHud = document.getElementById('playerHud');
+
+  // If tapping outside any pill, dismiss both HUDs
+  if (!castawayPill && !playerPill && !e.target.closest('.castaway-hud') && !e.target.closest('.player-hud')) {
+    if (castawayHud) castawayHud.classList.remove('visible');
+    if (playerHud) playerHud.classList.remove('visible');
     _hudTapActive = null;
+    _hudTapType = null;
     return;
   }
-  if (!pill) return;
 
-  // Skip if we're on the draft page and the click is a draft pick button
-  if (pill.closest('.draft-pick-btn') || pill.closest('.draft-available')) return;
+  // Player pill tap
+  if (playerPill) {
+    const idx = parseInt(playerPill.getAttribute('data-player-idx'));
+    if (isNaN(idx)) return;
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+      e.preventDefault();
+      if (_hudTapActive === idx && _hudTapType === 'player' && playerHud.classList.contains('visible')) {
+        playerHud.classList.remove('visible');
+        _hudTapActive = null;
+        _hudTapType = null;
+      } else {
+        castawayHud.classList.remove('visible');
+        showPlayerHud(e, idx);
+        _hudTapActive = idx;
+        _hudTapType = 'player';
+      }
+    }
+    return;
+  }
 
-  const castawayId = parseInt(pill.getAttribute('data-castaway-id'));
-  if (isNaN(castawayId)) return;
-
-  // On mobile (touch devices), toggle HUD on tap
-  if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
-    e.preventDefault();
-    if (_hudTapActive === castawayId && hud && hud.classList.contains('visible')) {
-      hud.classList.remove('visible');
-      _hudTapActive = null;
-    } else {
-      showCastawayHud(e, castawayId);
-      _hudTapActive = castawayId;
+  // Castaway pill tap
+  if (castawayPill) {
+    if (castawayPill.closest('.draft-pick-btn') || castawayPill.closest('.draft-available')) return;
+    const castawayId = parseInt(castawayPill.getAttribute('data-castaway-id'));
+    if (isNaN(castawayId)) return;
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+      e.preventDefault();
+      if (_hudTapActive === castawayId && _hudTapType === 'castaway' && castawayHud.classList.contains('visible')) {
+        castawayHud.classList.remove('visible');
+        _hudTapActive = null;
+        _hudTapType = null;
+      } else {
+        playerHud.classList.remove('visible');
+        showCastawayHud(e, castawayId);
+        _hudTapActive = castawayId;
+        _hudTapType = 'castaway';
+      }
     }
   }
 });
@@ -5403,6 +5544,16 @@ init();
     <div class="castaway-hud-season" id="hudSeason"></div>
     <div class="castaway-hud-stats" id="hudStats"></div>
     <div class="castaway-hud-drafted" id="hudDrafted"></div>
+  </div>
+</div>
+
+<!-- Player HUD tooltip -->
+<div class="player-hud" id="playerHud">
+  <div class="player-hud-body">
+    <div class="player-hud-name" id="pHudName"></div>
+    <div class="player-hud-rank" id="pHudRank"></div>
+    <div class="player-hud-stats" id="pHudStats"></div>
+    <div class="player-hud-roster" id="pHudRoster"></div>
   </div>
 </div>
 
