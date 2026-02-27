@@ -363,6 +363,7 @@ h3 { font-size: 1.2rem; margin-bottom: 0.8rem; color: var(--torch-gold); }
 
 .status-active { background: var(--jungle-green); color: #fff; }
 .status-eliminated { background: var(--tribal-red); color: #fff; }
+.status-medevac { background: #c0392b; color: #fff; }
 .status-merged { background: var(--ocean-blue); color: #fff; }
 
 /* ========== DRAFT BOARD ========== */
@@ -2764,7 +2765,7 @@ let state = {
   players: [],
   settings: { draftRounds: 3, maxPicks: 2, mergeTrigger: 9, scoringStartEp: 2 },
   castaways: DEFAULT_CASTAWAYS.map((c, i) => ({
-    ...c, id: i, pickedBy: [], status: 'active', eliminatedEp: null, mergePickedBy: []
+    ...c, id: i, pickedBy: [], status: 'active', eliminatedEp: null, eliminationType: null, mergePickedBy: []
   })),
   draftOrder: [],
   draftPicks: [],
@@ -3729,7 +3730,7 @@ function renderLeaderboard() {
       const pts = getCastawayTotalPoints(c.id);
       const isElim = c.status === 'eliminated';
       return `<div class="tribe-member">
-        <span class="castaway-pill${isElim ? ' elim' : ''}" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}${c.isMerge ? ' <span class="merge-label">M</span>' : ''}${isElim ? ' (Ep ' + c.eliminatedEp + ')' : ''}</span>
+        <span class="castaway-pill${isElim ? ' elim' : ''}" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}${c.isMerge ? ' <span class="merge-label">M</span>' : ''}${isElim ? (c.eliminationType === 'medevac' ? ' \u{1F6A8}' : ' (Ep ' + c.eliminatedEp + ')') : ''}</span>
         <span class="member-points">${pts}</span>
       </div>`;
     }).join('');
@@ -4130,7 +4131,9 @@ function renderCast() {
     ).join('');
 
     const statusBadge = c.status === 'eliminated' ?
-      `<span class="status-badge status-eliminated">Out Ep ${c.eliminatedEp}</span>` :
+      (c.eliminationType === 'medevac'
+        ? `<span class="status-badge status-medevac">&#x1F6A8; Ep ${c.eliminatedEp}</span>`
+        : `<span class="status-badge status-eliminated">Out Ep ${c.eliminatedEp}</span>`) :
       `<span class="status-badge status-active">Active</span>`;
 
     const avatarContent = c.photo
@@ -4432,7 +4435,7 @@ function loadTestData() {
   state.players = testPlayers;
   state.settings = { draftRounds: 3, maxPicks: 2, mergeTrigger: 9, scoringStartEp: 2 };
   state.castaways = DEFAULT_CASTAWAYS.map((c, i) => ({
-    ...c, id: i, pickedBy: [], status: 'active', eliminatedEp: null, mergePickedBy: []
+    ...c, id: i, pickedBy: [], status: 'active', eliminatedEp: null, eliminationType: null, mergePickedBy: []
   }));
 
   // Simulate snake draft
@@ -4603,9 +4606,10 @@ function renderEpHighlights() {
   // Eliminations
   state.castaways.forEach(c => {
     if (c.eliminatedEp === latestEp) {
+      const isMedevac = c.eliminationType === 'medevac';
       highlights.push({
-        icon: '🔻',
-        text: `<span class="castaway-pill pill-sm elim" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}</span> was eliminated`,
+        icon: isMedevac ? '🚨' : '🔻',
+        text: `<span class="castaway-pill pill-sm elim" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}</span> was ${isMedevac ? 'medically evacuated' : 'eliminated'}`,
         pts: 0,
         priority: 10
       });
@@ -4966,7 +4970,9 @@ function showCastawayHud(event, castawayId) {
 
   // Stats
   const totalPts = getCastawayTotalPoints(c.id);
-  const status = c.status === 'eliminated' ? `Out Ep ${c.eliminatedEp}` : 'Active';
+  const status = c.status === 'eliminated'
+    ? (c.eliminationType === 'medevac' ? `\u{1F6A8} Medevac Ep ${c.eliminatedEp}` : `Out Ep ${c.eliminatedEp}`)
+    : 'Active';
   const statusColor = c.status === 'eliminated' ? 'var(--tribal-red)' : 'var(--jungle-green)';
 
   // Count episodes survived
