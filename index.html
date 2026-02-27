@@ -2560,7 +2560,7 @@ body.join-mode .join-flow { display: block; }
   <!-- Power Rankings (commissioner editorial) -->
   <div class="power-rankings" id="powerRankingsSection" style="display:none">
     <div class="power-rankings-header">
-      <h3>Power Rankings</h3>
+      <h3 id="powerRankingsTitle">Power Rankings</h3>
       <span class="power-rankings-ep" id="powerRankingsEp"></span>
       <button class="btn btn-secondary btn-sm admin-only" style="margin-left:auto;font-size:0.65rem;padding:2px 8px" onclick="togglePowerRankingsEdit()">Edit</button>
     </div>
@@ -3223,7 +3223,7 @@ function renderDraft() {
 
   if (!state.draftStarted) {
     currentPlayerEl.textContent = '—';
-    pickInfoEl.textContent = 'Draft not started';
+    pickInfoEl.textContent = IS_ADMIN ? 'Draft not started' : 'Draft has not started yet';
     currentPickPanel.style.borderColor = 'rgba(255,255,255,0.15)';
     currentPickPanel.style.animation = 'none';
     startBtn.style.display = '';
@@ -3274,7 +3274,9 @@ function renderDraft() {
   if (!state.draftStarted) {
     tvLayout.style.display = '';
     revealContainer.style.display = 'none';
-    pickArea.innerHTML = '<div style="color:var(--text-secondary);padding:2rem;text-align:center;font-size:1.2rem">Click "Start Draft" to begin</div>';
+    pickArea.innerHTML = IS_ADMIN
+      ? '<div style="color:var(--text-secondary);padding:2rem;text-align:center;font-size:1.2rem">Click "Start Draft" to begin</div>'
+      : '<div style="color:var(--text-secondary);padding:2rem;text-align:center;font-size:1.2rem">Waiting for the commissioner to start the draft...</div>';
   } else if (isDone) {
     // Hide the draft grid, show tribes reveal in its own full-width container
     tvLayout.style.display = 'none';
@@ -4634,19 +4636,34 @@ function renderPowerRankings() {
   const section = document.getElementById('powerRankingsSection');
   if (!state.players.length) { section.style.display = 'none'; return; }
 
-  // Find latest episode with data
+  // Find latest episode with data (check all episodes including pre-scoring ones)
   let latestEp = 0;
   for (let ep = state.settings.scoringStartEp; ep <= 20; ep++) {
     if (state.episodes[ep] && Object.keys(state.episodes[ep]).length > 0) latestEp = ep;
   }
-  if (!latestEp) { section.style.display = 'none'; return; }
+
+  // Also check for pre-scoring episode commentary (e.g., Episode 1 before draft)
+  let commentaryEp = latestEp;
+  if (!commentaryEp) {
+    // Check if there's commentary for any episode (including ep 1)
+    const commentaryKeys = Object.keys(state.powerRankings).map(Number).filter(n => n > 0);
+    if (commentaryKeys.length > 0) commentaryEp = Math.max(...commentaryKeys);
+  }
+  if (!commentaryEp && !Object.keys(state.powerRankings).length) { section.style.display = 'none'; return; }
 
   // Show section if there's a ranking for any episode
-  const ranking = state.powerRankings[latestEp];
+  const ranking = state.powerRankings[commentaryEp];
   if (!ranking && !Object.keys(state.powerRankings).length) { section.style.display = 'none'; return; }
   section.style.display = '';
 
-  document.getElementById('powerRankingsEp').textContent = 'After Episode ' + latestEp;
+  const prTitle = document.getElementById('powerRankingsTitle');
+  if (!state.draftStarted && commentaryEp <= 1) {
+    prTitle.textContent = "Commissioner's Notes";
+    document.getElementById('powerRankingsEp').textContent = 'Pre-Draft';
+  } else {
+    prTitle.textContent = 'Power Rankings';
+    document.getElementById('powerRankingsEp').textContent = 'After Episode ' + commentaryEp;
+  }
 
   if (ranking) {
     // Highlight player names in the text
@@ -4678,7 +4695,12 @@ function savePowerRankings() {
   for (let ep = state.settings.scoringStartEp; ep <= 20; ep++) {
     if (state.episodes[ep] && Object.keys(state.episodes[ep]).length > 0) latestEp = ep;
   }
-  if (!latestEp) return;
+  // Allow saving commentary for pre-scoring episodes
+  if (!latestEp) {
+    const commentaryKeys = Object.keys(state.powerRankings).map(Number).filter(n => n > 0);
+    if (commentaryKeys.length > 0) latestEp = Math.max(...commentaryKeys);
+    else latestEp = 1; // Default to episode 1 if nothing exists yet
+  }
 
   const text = document.getElementById('powerRankingsTextarea').value.trim();
   if (text) {
@@ -5032,6 +5054,40 @@ function hideCastawayHud() {
     document.getElementById('castawayHud').classList.remove('visible');
   }, 100);
 }
+
+// Mobile tap support for castaway HUD — works on Leaderboard, Cast, Scoring, etc.
+// Does NOT interfere with Draft pick buttons (those use a different onclick handler)
+let _hudTapActive = null;
+document.addEventListener('click', function(e) {
+  const pill = e.target.closest('[data-castaway-id]');
+  const hud = document.getElementById('castawayHud');
+
+  // If tapping outside a castaway pill, dismiss the HUD
+  if (!pill && !e.target.closest('.castaway-hud')) {
+    if (hud) hud.classList.remove('visible');
+    _hudTapActive = null;
+    return;
+  }
+  if (!pill) return;
+
+  // Skip if we're on the draft page and the click is a draft pick button
+  if (pill.closest('.draft-pick-btn') || pill.closest('.draft-available')) return;
+
+  const castawayId = parseInt(pill.getAttribute('data-castaway-id'));
+  if (isNaN(castawayId)) return;
+
+  // On mobile (touch devices), toggle HUD on tap
+  if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+    e.preventDefault();
+    if (_hudTapActive === castawayId && hud && hud.classList.contains('visible')) {
+      hud.classList.remove('visible');
+      _hudTapActive = null;
+    } else {
+      showCastawayHud(e, castawayId);
+      _hudTapActive = castawayId;
+    }
+  }
+});
 
 // ===================== JOIN MODE =====================
 let joinSelectedCastaway = null;
