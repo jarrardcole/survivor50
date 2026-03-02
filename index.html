@@ -2127,6 +2127,39 @@ body.join-mode .join-flow { display: block; }
 .lobby-player-pick { font-size: 0.8rem; color: var(--text-secondary); }
 .lobby-player-me .lobby-player-pick { color: var(--torch-gold); font-weight: 700; }
 .lobby-loading { text-align: center; color: var(--text-secondary); padding: 2rem 0; }
+
+/* Draft night: shuffle animation */
+@keyframes shuffleShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px) rotate(-1deg); }
+  40% { transform: translateX(4px) rotate(1deg); }
+  60% { transform: translateX(-3px) rotate(-0.5deg); }
+  80% { transform: translateX(3px) rotate(0.5deg); }
+}
+.shuffle-animating { animation: shuffleShake 0.2s ease; }
+
+/* Draft night: mobile viewer improvements */
+@media (max-width: 768px) {
+  .draft-pick-area {
+    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-rows: auto !important;
+    height: auto !important;
+    gap: 4px;
+  }
+  .draft-pick-btn { min-height: 130px; }
+  .draft-pick-btn .pick-name { font-size: 0.95rem; }
+  .draft-current-pick { padding: 1rem; border-width: 4px; }
+  .draft-current-pick .on-the-clock { font-size: 0.8rem; letter-spacing: 4px; }
+  .draft-current-pick .current-player-name { font-size: 1.8rem; }
+}
+
+/* Draft night: new pick highlight for viewers */
+@keyframes newPickFlash {
+  0% { box-shadow: 0 0 0 0 rgba(245,200,66,0.7); }
+  50% { box-shadow: 0 0 20px 4px rgba(245,200,66,0.4); }
+  100% { box-shadow: 0 0 0 0 rgba(245,200,66,0); }
+}
+.draft-pick-btn.new-pick-highlight { animation: newPickFlash 1.5s ease 2; }
 </style>
 </head>
 <body>
@@ -2565,6 +2598,8 @@ body.join-mode .join-flow { display: block; }
     <h2 style="margin:0">Snake Draft</h2>
     <button class="btn btn-primary admin-only" id="startDraftBtn" onclick="startDraft()">Start Draft</button>
     <button class="btn btn-danger btn-sm admin-only" onclick="undoLastPick()" id="undoBtn" style="display:none">Undo Last Pick</button>
+    <button class="btn btn-secondary btn-sm admin-only" onclick="randomDraftPick()" id="randomPickBtn" style="display:none">🎲 Random Pick</button>
+    <button class="btn btn-secondary btn-sm admin-only" onclick="queuedDraftPick()" id="queuedPickBtn" style="display:none">📋 Queued Pick</button>
     <button class="btn btn-secondary btn-sm" onclick="document.getElementById('draftResultsWrap').style.display = document.getElementById('draftResultsWrap').style.display === 'none' ? '' : 'none'">Toggle Results Table</button>
   </div>
 
@@ -2753,8 +2788,13 @@ const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzuvQDkZTKJByohRB
 const urlParams = new URLSearchParams(window.location.search);
 const IS_ADMIN = urlParams.get('mode') === 'admin';
 const IS_JOIN = urlParams.get('mode') === 'join';
-const AUTO_REFRESH_INTERVAL = 60000; // participants auto-refresh every 60s
+const AUTO_REFRESH_INTERVAL = 10000; // draft night: 10s refresh for near-real-time
 let _refreshTimer = null;
+
+// Pre-submitted draft pick queues (ranked preferences, highest first)
+const QUEUED_PICKS = {
+  'James Baumer': ['Tiffany','Chrissy','Genevieve','Jonathan','Kamilla','Joe','Emily','Rizo','Q','Angelina']
+};
 
 // ===================== DATA MODEL =====================
 const PLAYER_COLORS = [
@@ -3007,9 +3047,21 @@ async function fetchFromSheet() {
       const parsed = typeof data.state === 'string' ? JSON.parse(data.state) : data.state;
       // Only apply if we got real data
       if (parsed && parsed.players && parsed.players.length > 0) {
+        const prevPickCount = state.draftPicks ? state.draftPicks.length : 0;
         Object.assign(state, parsed);
         restorePhotos();
         renderAll();
+        // Flash newly-picked castaways for viewers
+        if (parsed.draftPicks && parsed.draftPicks.length > prevPickCount) {
+          const newPicks = parsed.draftPicks.slice(prevPickCount);
+          newPicks.forEach(pick => {
+            const btn = document.querySelector(`.draft-pick-btn[data-id="${pick.castawayId}"]`);
+            if (btn) {
+              btn.classList.add('new-pick-highlight');
+              setTimeout(() => btn.classList.remove('new-pick-highlight'), 3500);
+            }
+          });
+        }
         const when = data.lastUpdated ? new Date(data.lastUpdated).toLocaleTimeString() : 'just now';
         setSyncStatus('connected', 'Updated ' + when);
         return true;
@@ -3103,6 +3155,12 @@ function randomizeDraftOrder() {
   renderDraftOrderPreview();
   renderDraft();
   saveState();
+  // Shake animation
+  const preview = document.getElementById('draftOrderPreview');
+  preview.classList.remove('shuffle-animating');
+  void preview.offsetWidth; // force reflow to restart animation
+  preview.classList.add('shuffle-animating');
+  setTimeout(() => preview.classList.remove('shuffle-animating'), 300);
 }
 
 function renderDraftOrderPreview() {
@@ -3262,6 +3320,8 @@ function renderDraft() {
 
   const startBtn = document.getElementById('startDraftBtn');
   const undoBtn = document.getElementById('undoBtn');
+  const randomPickBtn = document.getElementById('randomPickBtn');
+  const queuedPickBtn = document.getElementById('queuedPickBtn');
   const currentPickPanel = document.getElementById('draftCurrentPick');
   const currentPlayerEl = document.getElementById('draftCurrentPlayer');
   const pickInfoEl = document.getElementById('draftPickInfo');
@@ -3273,6 +3333,8 @@ function renderDraft() {
     currentPickPanel.style.animation = 'none';
     startBtn.style.display = '';
     undoBtn.style.display = 'none';
+    randomPickBtn.style.display = 'none';
+    queuedPickBtn.style.display = 'none';
   } else if (isDone) {
     currentPlayerEl.innerHTML = 'Draft Complete!';
     currentPlayerEl.style.color = '#4caf50';
@@ -3282,6 +3344,8 @@ function renderDraft() {
     currentPickPanel.style.animation = 'none';
     startBtn.style.display = 'none';
     undoBtn.style.display = state.draftPicks.length > 0 ? '' : 'none';
+    randomPickBtn.style.display = 'none';
+    queuedPickBtn.style.display = 'none';
     document.getElementById('draftResultsWrap').style.display = '';
   } else {
     const current = snakeOrder[currentPick];
@@ -3294,6 +3358,8 @@ function renderDraft() {
     currentPickPanel.style.animation = 'fireGlow 2s ease infinite';
     startBtn.style.display = 'none';
     undoBtn.style.display = state.draftPicks.length > 0 ? '' : 'none';
+    randomPickBtn.style.display = IS_ADMIN ? '' : 'none';
+    queuedPickBtn.style.display = (IS_ADMIN && QUEUED_PICKS[p.name]) ? '' : 'none';
   }
 
   // Draft order sidebar - shows full snake with picks filled in
@@ -3599,6 +3665,54 @@ function makeDraftPick(castawayId) {
   showPickOverlay(currentPick + 1, state.players[slot.playerIdx], castaway);
   renderDraft();
   saveState();
+
+  // Auto-publish to Sheet so viewers get near-real-time updates
+  if (IS_ADMIN && SHEET_API_URL) {
+    publishToSheet().catch(() => {});
+  }
+}
+
+function randomDraftPick() {
+  const snakeOrder = getSnakeDraftOrder();
+  const currentPick = state.draftPicks.length;
+  if (currentPick >= snakeOrder.length) return;
+
+  // Filter available castaways: not at maxPicks and not eliminated
+  const available = state.castaways.filter(c =>
+    c.pickedBy.length < state.settings.maxPicks && !c.eliminated
+  );
+  if (available.length === 0) { alert('No available castaways!'); return; }
+
+  const pick = available[Math.floor(Math.random() * available.length)];
+  const currentPlayer = state.players[snakeOrder[currentPick].playerIdx];
+  if (confirm(`Random pick for ${currentPlayer.name}:\n\n${pick.shortName}\n\nLock in this pick?`)) {
+    makeDraftPick(pick.id);
+  }
+}
+
+function queuedDraftPick() {
+  const snakeOrder = getSnakeDraftOrder();
+  const currentPick = state.draftPicks.length;
+  if (currentPick >= snakeOrder.length) return;
+
+  const currentPlayer = state.players[snakeOrder[currentPick].playerIdx];
+  const queue = QUEUED_PICKS[currentPlayer.name];
+  if (!queue) { alert('No queued picks for ' + currentPlayer.name); return; }
+
+  // Find first available castaway in their ranked list
+  let pick = null;
+  for (const name of queue) {
+    const c = state.castaways.find(ca => ca.shortName === name);
+    if (c && c.pickedBy.length < state.settings.maxPicks && !c.eliminated) {
+      pick = c;
+      break;
+    }
+  }
+  if (!pick) { alert('All queued picks for ' + currentPlayer.name + ' are unavailable!'); return; }
+
+  if (confirm(`Queued pick for ${currentPlayer.name}:\n\n${pick.shortName} (ranked #${queue.indexOf(pick.shortName) + 1})\n\nLock in this pick?`)) {
+    makeDraftPick(pick.id);
+  }
 }
 
 function showPickOverlay(pickNum, player, castaway) {
