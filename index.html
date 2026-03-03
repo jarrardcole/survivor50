@@ -2802,6 +2802,7 @@ const IS_ADMIN = urlParams.get('mode') === 'admin';
 const IS_JOIN = urlParams.get('mode') === 'join';
 const IS_REMOTE = urlParams.get('mode') === 'remote';
 const REMOTE_PLAYER = urlParams.get('player') ? decodeURIComponent(urlParams.get('player')) : null;
+const REMOTE_PLAYERS = IS_REMOTE && REMOTE_PLAYER ? REMOTE_PLAYER.split(',').map(p => p.trim()) : [];
 const AUTO_REFRESH_INTERVAL = 10000; // draft night: 10s refresh for near-real-time
 let _refreshTimer = null;
 let _pendingPickTimer = null;
@@ -3081,11 +3082,12 @@ async function fetchFromSheet() {
         const when = data.lastUpdated ? new Date(data.lastUpdated).toLocaleTimeString() : 'just now';
         setSyncStatus('connected', 'Updated ' + when);
         // Remote mode: update status bar
-        if (IS_REMOTE && REMOTE_PLAYER) {
-          if (isCurrentRemotePlayerTurn() && !_remotePendingSubmitted) {
-            document.getElementById('remoteStatusText').textContent = 'YOUR TURN! Tap a castaway to pick.';
+        if (IS_REMOTE && REMOTE_PLAYERS.length > 0) {
+          const whoseTurn = isCurrentRemotePlayerTurn();
+          if (whoseTurn && !_remotePendingSubmitted) {
+            document.getElementById('remoteStatusText').textContent = whoseTurn.toUpperCase() + "'S TURN! Tap a castaway to pick.";
             document.getElementById('remoteStatus').style.borderColor = '#4CAF50';
-          } else if (_remotePendingSubmitted && !isCurrentRemotePlayerTurn()) {
+          } else if (_remotePendingSubmitted && !whoseTurn) {
             // Pick was accepted, reset
             _remotePendingSubmitted = false;
             document.getElementById('remoteStatusText').textContent = 'Pick accepted! Waiting for next turn...';
@@ -3125,12 +3127,12 @@ function setupMode() {
       // Poll for pending remote picks every 5 seconds
       _pendingPickTimer = setInterval(pollPendingPicks, 5000);
     }
-  } else if (IS_REMOTE && REMOTE_PLAYER) {
+  } else if (IS_REMOTE && REMOTE_PLAYERS.length > 0) {
     document.body.classList.add('participant-mode');
     badge.textContent = 'REMOTE';
     badge.className = 'mode-badge viewer';
     document.getElementById('remoteStatus').style.display = '';
-    document.getElementById('remoteStatusText').textContent = 'Remote Drafter: ' + REMOTE_PLAYER;
+    document.getElementById('remoteStatusText').textContent = 'Remote Drafters: ' + REMOTE_PLAYERS.join(' & ');
     if (SHEET_API_URL) {
       banner.classList.remove('hidden');
       fetchFromSheet();
@@ -3471,7 +3473,7 @@ function renderDraft() {
         return `<div class="pick-drafted-badge" style="background:${p.color}">${p.name}</div>`;
       }).join('');
 
-      const isRemoteTurn = IS_REMOTE && REMOTE_PLAYER && !_remotePendingSubmitted && isCurrentRemotePlayerTurn();
+      const isRemoteTurn = IS_REMOTE && REMOTE_PLAYERS.length > 0 && !_remotePendingSubmitted && isCurrentRemotePlayerTurn();
       const canClick = !disabled && (IS_ADMIN || isRemoteTurn);
       const clickAction = IS_ADMIN ? `makeDraftPick(${c.id})` : `submitRemotePick(${c.id})`;
       return `<button class="draft-pick-btn${animClass}" ${canClick ? '' : 'disabled'} onclick="${clickAction}" data-castaway-id="${c.id}">
@@ -3763,24 +3765,29 @@ function queuedDraftPick() {
 }
 
 // ===================== REMOTE DRAFT PICK =====================
+// Returns the remote player name whose turn it is, or false
 function isCurrentRemotePlayerTurn() {
-  if (!IS_REMOTE || !REMOTE_PLAYER || !state.draftStarted) return false;
+  if (!IS_REMOTE || REMOTE_PLAYERS.length === 0 || !state.draftStarted) return false;
   const snakeOrder = getSnakeDraftOrder();
   const currentPick = state.draftPicks.length;
   if (currentPick >= snakeOrder.length) return false;
   const current = snakeOrder[currentPick];
-  return state.players[current.playerIdx] && state.players[current.playerIdx].name === REMOTE_PLAYER;
+  const currentName = state.players[current.playerIdx] && state.players[current.playerIdx].name;
+  if (currentName && REMOTE_PLAYERS.includes(currentName)) return currentName;
+  return false;
 }
 
 async function submitRemotePick(castawayId) {
-  if (!IS_REMOTE || !REMOTE_PLAYER || !SHEET_API_URL) return;
+  if (!IS_REMOTE || REMOTE_PLAYERS.length === 0 || !SHEET_API_URL) return;
+  const currentRemote = isCurrentRemotePlayerTurn();
+  if (!currentRemote) return;
   const castaway = state.castaways[castawayId];
   if (!castaway || castaway.pickedBy.length >= state.settings.maxPicks) return;
 
-  if (!confirm('Pick ' + castaway.shortName + '?\n\nThis will be sent to the commissioner for approval.')) return;
+  if (!confirm('Pick ' + castaway.shortName + ' for ' + currentRemote + '?\n\nThis will be sent to the commissioner for approval.')) return;
 
   _remotePendingSubmitted = true;
-  document.getElementById('remoteStatusText').textContent = 'Pick submitted: ' + castaway.shortName + ' — waiting for commissioner...';
+  document.getElementById('remoteStatusText').textContent = 'Pick submitted: ' + castaway.shortName + ' for ' + currentRemote + ' — waiting for commissioner...';
   document.getElementById('remoteStatus').style.borderColor = '#F5C842';
 
   try {
@@ -3788,7 +3795,7 @@ async function submitRemotePick(castawayId) {
       method: 'POST',
       body: JSON.stringify({
         action: 'remote_pick',
-        player: REMOTE_PLAYER,
+        player: currentRemote,
         castawayId: castawayId,
         castawayName: castaway.shortName
       })
