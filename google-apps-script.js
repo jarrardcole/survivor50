@@ -16,6 +16,7 @@
 // - Cell A1 stores the full JSON state
 // - Cell A2 stores the last-updated timestamp
 // - A "Registrations" sheet stores player sign-ups from the join page
+// - A "Pending" sheet stores remote draft pick requests (cell A1)
 // =============================================================
 
 function getOrCreateSheet() {
@@ -36,6 +37,16 @@ function getOrCreateRegistrationsSheet() {
     sheet = ss.insertSheet('Registrations');
     sheet.getRange('A1:D1').setValues([['Name', 'Email', 'CastawayId', 'Timestamp']]);
     sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function getOrCreatePendingSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Pending');
+  if (!sheet) {
+    sheet = ss.insertSheet('Pending');
+    sheet.getRange('A1').setValue('');
   }
   return sheet;
 }
@@ -62,14 +73,21 @@ function doGet(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Default: return state
+    // Default: return state + pending picks
     var sheet = getOrCreateSheet();
     var data = sheet.getRange('A1').getValue();
     var updated = sheet.getRange('A2').getValue();
+    var pendingSheet = getOrCreatePendingSheet();
+    var pendingRaw = pendingSheet.getRange('A1').getValue();
+    var pendingPick = null;
+    if (pendingRaw) {
+      try { pendingPick = JSON.parse(pendingRaw); } catch(pe) { pendingPick = null; }
+    }
     return ContentService.createTextOutput(JSON.stringify({
       success: true,
       state: data,
-      lastUpdated: updated
+      lastUpdated: updated,
+      pendingPick: pendingPick
     })).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({
@@ -86,6 +104,29 @@ function doPost(e) {
     // Registration action
     if (payload.action === 'register') {
       return handleRegistration(payload);
+    }
+
+    // Remote draft pick submission
+    if (payload.action === 'remote_pick') {
+      var pendingSheet = getOrCreatePendingSheet();
+      pendingSheet.getRange('A1').setValue(JSON.stringify({
+        player: payload.player,
+        castawayId: payload.castawayId,
+        castawayName: payload.castawayName,
+        timestamp: new Date().toISOString()
+      }));
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Clear pending pick (admin accepted or rejected)
+    if (payload.action === 'clear_pending') {
+      var pendingSheet = getOrCreatePendingSheet();
+      pendingSheet.getRange('A1').setValue('');
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true
+      })).setMimeType(ContentService.MimeType.JSON);
     }
 
     // Default: publish state (commissioner)

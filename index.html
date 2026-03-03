@@ -2325,6 +2325,18 @@ body.join-mode .join-flow { display: block; }
   <button class="btn btn-secondary btn-sm admin-only" onclick="publishToSheet()" id="publishBtn" style="font-size:0.7rem;padding:2px 10px">Publish</button>
 </div>
 
+<!-- Pending remote pick notification (admin only) -->
+<div id="pendingPickBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#1a3a1a,#0f250f);border-bottom:3px solid #F5C842;padding:12px 20px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5)">
+  <span style="color:#F5C842;font-weight:700;font-size:1.1rem" id="pendingPickText"></span>
+  <button class="btn btn-sm" onclick="acceptPendingPick()" style="background:#4CAF50;color:#fff;margin-left:12px;padding:4px 16px;font-weight:700">✓ Accept</button>
+  <button class="btn btn-sm" onclick="rejectPendingPick()" style="background:#e74c3c;color:#fff;margin-left:6px;padding:4px 16px;font-weight:700">✗ Reject</button>
+</div>
+
+<!-- Remote drafter status (remote mode only) -->
+<div id="remoteStatus" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#1a2a3a,#0f1a25);border-bottom:3px solid #2196F3;padding:12px 20px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5)">
+  <span style="color:#fff;font-weight:700;font-size:1rem" id="remoteStatusText">Connecting...</span>
+</div>
+
 <nav>
   <div class="logo" style="animation:flicker 3s ease infinite">SURVIVOR 50 <span>Fantasy</span></div>
   <div class="tabs">
@@ -2788,8 +2800,12 @@ const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzuvQDkZTKJByohRB
 const urlParams = new URLSearchParams(window.location.search);
 const IS_ADMIN = urlParams.get('mode') === 'admin';
 const IS_JOIN = urlParams.get('mode') === 'join';
+const IS_REMOTE = urlParams.get('mode') === 'remote';
+const REMOTE_PLAYER = urlParams.get('player') ? decodeURIComponent(urlParams.get('player')) : null;
 const AUTO_REFRESH_INTERVAL = 10000; // draft night: 10s refresh for near-real-time
 let _refreshTimer = null;
+let _pendingPickTimer = null;
+let _remotePendingSubmitted = false; // tracks if remote player has submitted a pick
 
 // Pre-submitted draft pick queues (ranked preferences, highest first)
 const QUEUED_PICKS = {
@@ -3064,6 +3080,21 @@ async function fetchFromSheet() {
         }
         const when = data.lastUpdated ? new Date(data.lastUpdated).toLocaleTimeString() : 'just now';
         setSyncStatus('connected', 'Updated ' + when);
+        // Remote mode: update status bar
+        if (IS_REMOTE && REMOTE_PLAYER) {
+          if (isCurrentRemotePlayerTurn() && !_remotePendingSubmitted) {
+            document.getElementById('remoteStatusText').textContent = 'YOUR TURN! Tap a castaway to pick.';
+            document.getElementById('remoteStatus').style.borderColor = '#4CAF50';
+          } else if (_remotePendingSubmitted && !isCurrentRemotePlayerTurn()) {
+            // Pick was accepted, reset
+            _remotePendingSubmitted = false;
+            document.getElementById('remoteStatusText').textContent = 'Pick accepted! Waiting for next turn...';
+            document.getElementById('remoteStatus').style.borderColor = '#2196F3';
+          } else if (!_remotePendingSubmitted) {
+            document.getElementById('remoteStatusText').textContent = 'Watching draft — waiting for your turn...';
+            document.getElementById('remoteStatus').style.borderColor = '#2196F3';
+          }
+        }
         return true;
       }
     }
@@ -3091,6 +3122,19 @@ function setupMode() {
     if (SHEET_API_URL) {
       banner.classList.remove('hidden');
       setSyncStatus('connected', 'Ready to publish');
+      // Poll for pending remote picks every 5 seconds
+      _pendingPickTimer = setInterval(pollPendingPicks, 5000);
+    }
+  } else if (IS_REMOTE && REMOTE_PLAYER) {
+    document.body.classList.add('participant-mode');
+    badge.textContent = 'REMOTE';
+    badge.className = 'mode-badge viewer';
+    document.getElementById('remoteStatus').style.display = '';
+    document.getElementById('remoteStatusText').textContent = 'Remote Drafter: ' + REMOTE_PLAYER;
+    if (SHEET_API_URL) {
+      banner.classList.remove('hidden');
+      fetchFromSheet();
+      _refreshTimer = setInterval(fetchFromSheet, AUTO_REFRESH_INTERVAL);
     }
   } else {
     document.body.classList.add('participant-mode');
@@ -3427,7 +3471,10 @@ function renderDraft() {
         return `<div class="pick-drafted-badge" style="background:${p.color}">${p.name}</div>`;
       }).join('');
 
-      return `<button class="draft-pick-btn${animClass}" ${disabled || !IS_ADMIN ? 'disabled' : ''} onclick="makeDraftPick(${c.id})" data-castaway-id="${c.id}">
+      const isRemoteTurn = IS_REMOTE && REMOTE_PLAYER && !_remotePendingSubmitted && isCurrentRemotePlayerTurn();
+      const canClick = !disabled && (IS_ADMIN || isRemoteTurn);
+      const clickAction = IS_ADMIN ? `makeDraftPick(${c.id})` : `submitRemotePick(${c.id})`;
+      return `<button class="draft-pick-btn${animClass}" ${canClick ? '' : 'disabled'} onclick="${clickAction}" data-castaway-id="${c.id}">
         ${photoHtml}
         ${initialsHtml}
         ${badges ? `<div class="pick-drafted-badges">${badges}</div>` : ''}
@@ -3713,6 +3760,97 @@ function queuedDraftPick() {
   if (confirm(`Queued pick for ${currentPlayer.name}:\n\n${pick.shortName} (ranked #${queue.indexOf(pick.shortName) + 1})\n\nLock in this pick?`)) {
     makeDraftPick(pick.id);
   }
+}
+
+// ===================== REMOTE DRAFT PICK =====================
+function isCurrentRemotePlayerTurn() {
+  if (!IS_REMOTE || !REMOTE_PLAYER || !state.draftStarted) return false;
+  const snakeOrder = getSnakeDraftOrder();
+  const currentPick = state.draftPicks.length;
+  if (currentPick >= snakeOrder.length) return false;
+  const current = snakeOrder[currentPick];
+  return state.players[current.playerIdx] && state.players[current.playerIdx].name === REMOTE_PLAYER;
+}
+
+async function submitRemotePick(castawayId) {
+  if (!IS_REMOTE || !REMOTE_PLAYER || !SHEET_API_URL) return;
+  const castaway = state.castaways[castawayId];
+  if (!castaway || castaway.pickedBy.length >= state.settings.maxPicks) return;
+
+  if (!confirm('Pick ' + castaway.shortName + '?\n\nThis will be sent to the commissioner for approval.')) return;
+
+  _remotePendingSubmitted = true;
+  document.getElementById('remoteStatusText').textContent = 'Pick submitted: ' + castaway.shortName + ' — waiting for commissioner...';
+  document.getElementById('remoteStatus').style.borderColor = '#F5C842';
+
+  try {
+    await fetch(SHEET_API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'remote_pick',
+        player: REMOTE_PLAYER,
+        castawayId: castawayId,
+        castawayName: castaway.shortName
+      })
+    });
+  } catch(err) {
+    document.getElementById('remoteStatusText').textContent = 'Error submitting pick. Try again.';
+    _remotePendingSubmitted = false;
+  }
+}
+
+// Admin: poll for pending remote picks
+async function pollPendingPicks() {
+  if (!IS_ADMIN || !SHEET_API_URL) return;
+  try {
+    const resp = await fetch(SHEET_API_URL);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data.pendingPick && data.pendingPick.player) {
+      showPendingPickBanner(data.pendingPick);
+    } else {
+      document.getElementById('pendingPickBanner').style.display = 'none';
+    }
+  } catch(e) {}
+}
+
+function showPendingPickBanner(pick) {
+  const banner = document.getElementById('pendingPickBanner');
+  const text = document.getElementById('pendingPickText');
+  text.textContent = pick.player + ' wants to pick ' + pick.castawayName;
+  banner.style.display = '';
+  banner._pendingPick = pick;
+}
+
+function acceptPendingPick() {
+  const banner = document.getElementById('pendingPickBanner');
+  const pick = banner._pendingPick;
+  if (!pick) return;
+
+  // Find the castaway and make the pick
+  const castaway = state.castaways[pick.castawayId];
+  if (castaway && castaway.pickedBy.length < state.settings.maxPicks) {
+    makeDraftPick(pick.castawayId);
+  } else {
+    alert('Cannot accept: ' + pick.castawayName + ' is no longer available.');
+  }
+
+  // Clear the pending pick from the Sheet
+  banner.style.display = 'none';
+  fetch(SHEET_API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'clear_pending' })
+  }).catch(() => {});
+}
+
+function rejectPendingPick() {
+  const banner = document.getElementById('pendingPickBanner');
+  banner.style.display = 'none';
+  // Clear the pending pick from the Sheet
+  fetch(SHEET_API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'clear_pending' })
+  }).catch(() => {});
 }
 
 function showPickOverlay(pickNum, player, castaway) {
