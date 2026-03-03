@@ -3476,7 +3476,9 @@ function renderDraft() {
       const isRemoteTurn = IS_REMOTE && REMOTE_PLAYERS.length > 0 && !_remotePendingSubmitted && isCurrentRemotePlayerTurn();
       const canClick = !disabled && (IS_ADMIN || isRemoteTurn);
       const clickAction = IS_ADMIN ? `makeDraftPick(${c.id})` : `submitRemotePick(${c.id})`;
-      return `<button class="draft-pick-btn${animClass}" ${canClick ? '' : 'disabled'} onclick="${clickAction}" data-castaway-id="${c.id}">
+      // Viewers: only gray out drafted castaways, keep available ones colorful
+      const useDisabled = disabled || (IS_ADMIN || isRemoteTurn ? !canClick : false);
+      return `<button class="draft-pick-btn${animClass}" ${useDisabled ? 'disabled' : ''} ${canClick ? `onclick="${clickAction}"` : ''} data-castaway-id="${c.id}">
         ${photoHtml}
         ${initialsHtml}
         ${badges ? `<div class="pick-drafted-badges">${badges}</div>` : ''}
