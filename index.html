@@ -2806,7 +2806,7 @@ const IS_JOIN = urlParams.get('mode') === 'join';
 const IS_REMOTE = urlParams.get('mode') === 'remote';
 const REMOTE_PLAYER = urlParams.get('player') ? decodeURIComponent(urlParams.get('player')) : null;
 const REMOTE_PLAYERS = IS_REMOTE && REMOTE_PLAYER ? REMOTE_PLAYER.split(',').map(p => p.trim()) : [];
-const AUTO_REFRESH_INTERVAL = 10000; // draft night: 10s refresh for near-real-time
+const AUTO_REFRESH_INTERVAL = 60000; // post-draft: 60s refresh for casual viewing
 let _refreshTimer = null;
 let _pendingPickTimer = null;
 let _remotePendingSubmitted = false; // tracks if remote player has submitted a pick
@@ -5205,13 +5205,19 @@ function renderH2H() {
   const sel1 = document.getElementById('h2hSelect1');
   const sel2 = document.getElementById('h2hSelect2');
 
-  if (!sel1) {
-    // First render — create selectors
-    const options = state.players.map((p, i) => `<option value="${i}" style="color:${p.color}">${p.name}</option>`).join('');
+  // Rebuild selectors if player list changed or first render
+  const playerCount = state.players.length;
+  const needsRebuild = !sel1 || sel1.options.length !== playerCount ||
+    Array.from(sel1.options).some((opt, i) => opt.textContent !== state.players[i]?.name);
+  if (needsRebuild) {
+    const prev1 = sel1 ? parseInt(sel1.value) : 0;
+    const prev2 = sel2 ? parseInt(sel2.value) : Math.min(1, playerCount - 1);
+    const options1 = state.players.map((p, i) => `<option value="${i}" ${i === prev1 ? 'selected' : ''} style="color:${p.color}">${p.name}</option>`).join('');
+    const options2 = state.players.map((p, i) => `<option value="${i}" ${i === prev2 ? 'selected' : ''} style="color:${p.color}">${p.name}</option>`).join('');
     selectors.innerHTML = `
-      <select id="h2hSelect1" onchange="updateH2H()">${options}</select>
+      <select id="h2hSelect1" onchange="updateH2H()">${options1}</select>
       <span class="h2h-vs">VS</span>
-      <select id="h2hSelect2" onchange="updateH2H()">${state.players.map((p, i) => `<option value="${i}" ${i === 1 ? 'selected' : ''} style="color:${p.color}">${p.name}</option>`).join('')}</select>
+      <select id="h2hSelect2" onchange="updateH2H()">${options2}</select>
     `;
   }
 
