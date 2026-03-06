@@ -5140,8 +5140,9 @@ function renderTimeline() {
       svg += `<rect x="0" y="${rowY}" width="${W}" height="${rowH}" fill="rgba(245,230,202,0.015)" rx="0"/>`;
     }
 
-    // Player name — always use player's color
-    svg += `<text x="${padL - 8}" y="${rowY + (isMobile ? 18 : 14)}" fill="${color}" font-size="${nameSize}" font-weight="800" text-anchor="end" font-family="system-ui">${pr.player.name}</text>`;
+    // Player name — truncate on mobile to fit, always use player's color
+    const displayName = isMobile ? (pr.player.name.length > 10 ? pr.player.name.split(' ')[0] : pr.player.name) : pr.player.name;
+    svg += `<text x="${padL - 8}" y="${rowY + (isMobile ? 18 : 14)}" fill="${color}" font-size="${nameSize}" font-weight="800" text-anchor="end" font-family="system-ui">${displayName}</text>`;
 
     // Cumulative total on the right
     const totalPts = pr.cumPoints.length ? pr.cumPoints[pr.cumPoints.length - 1].cum : 0;
