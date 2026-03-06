@@ -965,7 +965,10 @@ h3 { font-size: 1.2rem; margin-bottom: 0.8rem; color: var(--torch-gold); }
 
 .castaway-pill.elim {
   text-decoration: line-through;
-  opacity: 0.5;
+  opacity: 0.45;
+  color: #ff6b6b;
+  background: rgba(255,60,60,0.08);
+  border: 1px solid rgba(255,60,60,0.15);
 }
 
 .castaway-pill.pill-sm {
@@ -3994,10 +3997,11 @@ function renderLeaderboard() {
   container.innerHTML = standings.map((s, rank) => {
     const winPct = probMap[s.playerIdx] || 0;
 
-    // Build castaway pills (hoverable)
+    // Build castaway pills (hoverable) — eliminated ones show a skull + episode number
     const pills = s.castawayObjs.map(c => {
       const isElim = c.status === 'eliminated';
-      return `<span class="castaway-pill${isElim ? ' elim' : ''}" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}</span>`;
+      const elimLabel = isElim ? (c.eliminationType === 'medevac' ? ' 🚨' : ' ☠') : '';
+      return `<span class="castaway-pill${isElim ? ' elim' : ''}" data-castaway-id="${c.id}" onmouseenter="showCastawayHud(event, ${c.id})" onmouseleave="hideCastawayHud()">${c.shortName}${elimLabel}</span>`;
     }).join('');
 
     const mergePills = s.mergeObjs.filter(c => !s.castawayObjs.find(dc => dc.id === c.id)).map(c => {
@@ -4672,13 +4676,19 @@ function renderBumpChart() {
 // ===================== WIN PROBABILITY =====================
 function calcWinProbabilities() {
   if (!state.players.length) return [];
-  const standings = state.players.map((p, i) => ({
-    playerIdx: i, name: p.name, color: p.color,
-    points: getPlayerTotalPoints(i)
-  }));
+  const standings = state.players.map((p, i) => {
+    const castaways = getPlayerCastaways(i);
+    const active = castaways.filter(c => c.status !== 'eliminated');
+    return {
+      playerIdx: i, name: p.name, color: p.color,
+      points: getPlayerTotalPoints(i),
+      activeCount: active.length,
+      totalCount: castaways.length
+    };
+  });
 
   const totalPts = standings.reduce((sum, s) => sum + Math.max(s.points, 1), 0);
-  const maxPts = Math.max(...standings.map(s => s.points));
+  const totalActive = standings.reduce((sum, s) => sum + s.activeCount, 0);
 
   // Estimate how far through the season we are (by episodes with data)
   let epsPlayed = 0;
@@ -4687,13 +4697,17 @@ function calcWinProbabilities() {
   }
   const seasonProgress = Math.min(epsPlayed / 14, 1); // ~14 scoring episodes in a season
 
-  // Simple model: weighted combination of equal chance and current standing
-  // As season progresses, current standing matters more
+  // Model: blend of current points, roster strength (active castaways), and equal chance
+  // Roster strength matters more early (future upside); points matter more late
   const equalChance = 1 / state.players.length;
   return standings.map(s => {
     const ptsShare = Math.max(s.points, 0.5) / totalPts;
-    // Early season: more equal; late season: standings dominate
-    const winProb = equalChance * (1 - seasonProgress * 0.7) + ptsShare * (seasonProgress * 0.7);
+    const rosterShare = totalActive > 0 ? s.activeCount / totalActive : equalChance;
+    // Early season: roster strength + equal chance dominate; late: points dominate
+    const ptsWeight = seasonProgress * 0.6;
+    const rosterWeight = (1 - seasonProgress) * 0.5;
+    const equalWeight = 1 - ptsWeight - rosterWeight;
+    const winProb = ptsShare * ptsWeight + rosterShare * rosterWeight + equalChance * equalWeight;
     return { ...s, winProb: Math.round(winProb * 100) };
   }).sort((a, b) => b.winProb - a.winProb);
 }
