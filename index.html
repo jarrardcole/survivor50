@@ -4877,21 +4877,52 @@ function renderMergeDraft() {
     }
   }
 
-  // Order display with pick indicators + "me" highlight
+  // Draft order view — shows every pick slot, who's on it, and who they picked
   const orderDisplay = document.getElementById('mergeDraftOrder');
   if (orderDisplay) {
-    orderDisplay.innerHTML = order.map((pIdx, i) => {
-      const p = state.players[pIdx];
-      const isCurrent = i === currentPick && !isDone;
-      const isDoneSlot = i < currentPick;
-      const isMe = pIdx === authedIdx;
-      let cls = isDoneSlot ? 'done' : (isCurrent ? 'current' : '');
-      const bgOpacity = isMe ? '70' : '40';
-      const borderWidth = isMe ? '3px' : '2px';
-      const marker = isDoneSlot ? ' ✓' : (isCurrent ? ' ← picking' : '');
-      const meLabel = isMe ? ' (YOU)' : '';
-      return `<div class="draft-order-slot ${cls}" style="background:${p.color}${bgOpacity};border:${borderWidth} solid ${p.color};color:${p.color};font-weight:${isMe ? '800' : '600'}">${i + 1}. ${p.name}${meLabel}${marker}</div>`;
-    }).join('');
+    if (!state.mergeDraftStarted) {
+      // Pre-start: just show the names in order
+      orderDisplay.innerHTML = order.length > 0
+        ? '<div style="font-size:0.85rem;color:#aaa;margin-bottom:0.5rem">Draft order (reverse leaderboard):</div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:0.4rem">' +
+          order.map((pIdx, i) => {
+            const p = state.players[pIdx];
+            const isMe = pIdx === authedIdx;
+            return `<div style="padding:0.3rem 0.7rem;border-radius:6px;background:${p.color}40;border:${isMe ? '2px' : '1px'} solid ${p.color};color:${p.color};font-weight:${isMe ? '800' : '600'};font-size:0.85rem">${i + 1}. ${p.name}${isMe ? ' (YOU)' : ''}</div>`;
+          }).join('') +
+          '</div>'
+        : '';
+    } else {
+      // Live draft: rich rows showing player + their pick (if made) + current indicator
+      orderDisplay.innerHTML = '<div style="display:flex;flex-direction:column;gap:0.3rem">' +
+        order.map((pIdx, i) => {
+          const p = state.players[pIdx];
+          const isCurrent = i === currentPick && !isDone;
+          const isDoneSlot = i < currentPick;
+          const isMe = pIdx === authedIdx;
+          const pick = state.mergePicks[i];
+          const c = pick ? state.castaways[pick.castawayId] : null;
+
+          let statusLabel = '';
+          if (isDoneSlot && c) {
+            statusLabel = `<span style="color:#4CAF50;margin-left:auto;display:flex;align-items:center;gap:0.4rem"><span style="font-weight:700">${c.shortName}</span> ✓</span>`;
+          } else if (isCurrent) {
+            statusLabel = '<span style="color:#F5C842;margin-left:auto;font-weight:700;font-size:0.85rem">← PICKING NOW</span>';
+          } else {
+            statusLabel = '<span style="color:#666;margin-left:auto;font-size:0.8rem">up soon</span>';
+          }
+
+          const bgOpacity = isMe ? '60' : (isCurrent ? '50' : '20');
+          const borderWidth = isMe ? '2px' : (isCurrent ? '2px' : '1px');
+          const borderColor = isCurrent ? '#F5C842' : p.color;
+          return `<div style="display:flex;align-items:center;gap:0.6rem;padding:0.5rem 0.8rem;border-radius:8px;background:${p.color}${bgOpacity};border:${borderWidth} solid ${borderColor}">
+            <span style="font-weight:800;color:${p.color};min-width:1.5rem">${i + 1}.</span>
+            <span style="font-weight:${isMe ? '800' : '600'};color:${p.color}">${p.name}${isMe ? ' <span style=\"background:#F5C842;color:#000;padding:1px 6px;border-radius:3px;font-size:0.7rem\">YOU</span>' : ''}</span>
+            ${statusLabel}
+          </div>`;
+        }).join('') +
+        '</div>';
+    }
   }
 
   // Pick area
