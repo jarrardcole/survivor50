@@ -2794,6 +2794,7 @@ body.join-mode .join-flow { display: block; }
     <div style="display:flex;flex-wrap:wrap;gap:0.5rem">
       <button class="btn btn-secondary btn-sm" onclick="copyMergeDraftLink()">📋 Copy Merge Draft Link</button>
       <button class="btn btn-secondary btn-sm" onclick="startMergeDraftAndNotify()" id="startAndNotifyBtn" style="display:none">🚀 Start Merge Draft + Email First Picker</button>
+      <button class="btn btn-secondary btn-sm" onclick="resendCurrentPickerEmail()" id="resendPickerBtn" style="display:none">📧 Resend Email to Current Picker</button>
     </div>
     <div id="mergeLinkCopied" style="font-size:0.8rem;color:#4CAF50;margin-top:0.4rem;display:none">✓ Copied to clipboard!</div>
   </div>
@@ -3111,6 +3112,42 @@ async function publishToSheet() {
     alert('Set SHEET_API_URL in the script to enable Google Sheet sync.\nSee google-apps-script.js for instructions.');
     return;
   }
+  // Guardrail 1: refuse to publish an uninitialized state over a good one. This class of bug
+  // wiped the live merge draft mid-session when a stale/fresh tab auto-published an empty
+  // state. If the local state has no players or no castaways, something is wrong — bail.
+  const playerCount = (state.players || []).length;
+  const castCount = (state.castaways || []).length;
+  if (playerCount === 0 || castCount < 18) {
+    const msg = 'BLOCKED: refusing to publish empty state (players=' + playerCount + ', castaways=' + castCount + '). Refresh from Sheet instead.';
+    console.warn(msg);
+    setSyncStatus('error', msg);
+    return;
+  }
+
+  // Guardrail 2: refuse to overwrite a server state that has MORE picks than our local
+  // state. Catches the "stale admin tab publishes old state" race. One GET; acceptable cost.
+  try {
+    const checkResp = await fetch(SHEET_API_URL);
+    if (checkResp.ok) {
+      const checkData = await checkResp.json();
+      if (checkData && checkData.success && checkData.state) {
+        const srv = typeof checkData.state === 'string' ? JSON.parse(checkData.state) : checkData.state;
+        if (srv && typeof srv === 'object') {
+          const srvDraft = (srv.draftPicks || []).length;
+          const srvMerge = (srv.mergePicks || []).length;
+          const locDraft = (state.draftPicks || []).length;
+          const locMerge = (state.mergePicks || []).length;
+          if (srvDraft > locDraft || srvMerge > locMerge) {
+            const msg = 'BLOCKED: server has newer picks than local (server ' + srvDraft + 'd/' + srvMerge + 'm vs local ' + locDraft + 'd/' + locMerge + 'm). Refresh before publishing.';
+            console.warn(msg);
+            setSyncStatus('error', msg);
+            if (!confirm(msg + '\n\nOverride and publish anyway? (Usually NO — hit Cancel and refresh the page first.)')) return;
+          }
+        }
+      }
+    }
+  } catch(e) { /* if the check itself fails, allow the publish — don't block on network flake */ }
+
   setSyncStatus('syncing', 'Publishing...');
   try {
     const resp = await fetch(SHEET_API_URL, {
@@ -4789,19 +4826,50 @@ function copyMergeDraftLink() {
 async function startMergeDraftAndNotify() {
   if (!confirm('Start the merge draft and email the first picker?')) return;
   startMergeDraft();
-  // Publish state first so backend has the latest order
-  if (SHEET_API_URL) {
-    try {
-      await publishToSheet();
-      // Ping backend to send the kickoff email
-      await fetch(SHEET_API_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'start_merge_draft' })
-      });
-      alert('✓ Merge draft started. First picker has been emailed.');
-    } catch (err) {
-      alert('Draft started, but notification failed: ' + err.message);
+  if (!SHEET_API_URL) { alert('No SHEET_API_URL configured.'); return; }
+  try {
+    await publishToSheet();
+    const resp = await fetch(SHEET_API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'start_merge_draft' })
+    });
+    const data = await resp.json().catch(() => ({ success: false, error: 'non-JSON response from backend' }));
+    if (!data.success) {
+      alert('⚠️ Draft started locally, but email FAILED: ' + (data.error || 'unknown') + '\n\nUse "Resend Email to Current Picker" to try again after fixing.');
+      return;
     }
+    alert('✓ Merge draft started. First picker has been emailed.');
+  } catch (err) {
+    alert('⚠️ Draft started locally, but email request threw: ' + err.message);
+  }
+}
+
+// Admin: re-fire the kickoff/next-picker email (uses the same backend endpoint,
+// which looks up whoever is currently on the clock from the sheet state).
+async function resendCurrentPickerEmail() {
+  if (!SHEET_API_URL) { alert('No SHEET_API_URL configured.'); return; }
+  if (!state.mergeDraftStarted) { alert('Draft hasn\'t started yet.'); return; }
+  if (state.mergeDraftComplete) { alert('Draft is already complete.'); return; }
+  const order = state.mergeDraftOrder || [];
+  const idx = order[state.mergePicks.length];
+  const p = state.players[idx];
+  if (!p) { alert('Could not resolve current picker.'); return; }
+  if (!confirm('Re-send the "you\'re up" email to ' + p.name + '?')) return;
+  try {
+    // Make sure the backend is reading fresh state, in case the sheet was stale
+    await publishToSheet();
+    const resp = await fetch(SHEET_API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'start_merge_draft' })
+    });
+    const data = await resp.json().catch(() => ({ success: false, error: 'non-JSON response from backend' }));
+    if (!data.success) {
+      alert('Email FAILED: ' + (data.error || 'unknown'));
+      return;
+    }
+    alert('✓ Email resent to ' + p.name + '.');
+  } catch (err) {
+    alert('Request threw: ' + err.message);
   }
 }
 
@@ -4857,6 +4925,12 @@ function renderMergeDraft() {
     if (undoBtn) undoBtn.style.display = (IS_ADMIN && state.mergePicks.length > 0) ? '' : 'none';
     const startNotifyBtn = document.getElementById('startAndNotifyBtn');
     if (startNotifyBtn) startNotifyBtn.style.display = 'none';
+  }
+
+  // Show "Resend Email to Current Picker" button to admin whenever draft is live (in progress)
+  const resendBtn = document.getElementById('resendPickerBtn');
+  if (resendBtn) {
+    resendBtn.style.display = (IS_ADMIN && state.mergeDraftStarted && !isDone) ? '' : 'none';
   }
 
   // Sync the Public Merge Draft Mode checkbox to current setting

@@ -140,8 +140,42 @@ function doPost(e) {
     }
 
     // Default: publish state (commissioner)
+    // GUARDRAILS — reject any publish that would corrupt or regress the live state.
+    // Without these, any POST that didn't match a known action (including malformed or
+    // empty ones) would wipe A1 by writing JSON.stringify(undefined).
+    var newState = payload.state;
+    if (!newState || typeof newState !== 'object') {
+      return jsonOut({ success: false, error: 'missing_state' });
+    }
+    if (!Array.isArray(newState.players) || newState.players.length === 0) {
+      return jsonOut({ success: false, error: 'empty_players' });
+    }
+    if (!Array.isArray(newState.castaways) || newState.castaways.length < 18) {
+      return jsonOut({ success: false, error: 'insufficient_castaways' });
+    }
+    // Anti-regression: never accept a publish that has FEWER picks than what's already
+    // on the sheet (client was stale). Also block if merge draft is currently started on
+    // the sheet but the incoming state says it isn't — that's a reset attempt.
     var sheet = getOrCreateSheet();
-    sheet.getRange('A1').setValue(JSON.stringify(payload.state));
+    try {
+      var currentRaw = sheet.getRange('A1').getValue();
+      if (currentRaw) {
+        var current = JSON.parse(currentRaw);
+        if (current && typeof current === 'object') {
+          var curDraft = (current.draftPicks || []).length;
+          var curMerge = (current.mergePicks || []).length;
+          var newDraft = (newState.draftPicks || []).length;
+          var newMerge = (newState.mergePicks || []).length;
+          if (newDraft < curDraft || newMerge < curMerge) {
+            return jsonOut({ success: false, error: 'stale_state', serverDraft: curDraft, serverMerge: curMerge, incomingDraft: newDraft, incomingMerge: newMerge });
+          }
+          if (current.mergeDraftStarted && !newState.mergeDraftStarted) {
+            return jsonOut({ success: false, error: 'would_reset_merge_draft' });
+          }
+        }
+      }
+    } catch (e) { /* if current is unreadable, allow the publish to recover */ }
+    sheet.getRange('A1').setValue(JSON.stringify(newState));
     sheet.getRange('A2').setValue(new Date().toISOString());
     return ContentService.createTextOutput(JSON.stringify({
       success: true,
@@ -276,9 +310,14 @@ function notifyNextPicker(state) {
   var pickNum = state.mergePicks.length + 1;
   var totalPicks = state.mergeDraftOrder.length;
 
+  // NOTE: Gmail silently drops self-sent MailApp messages. During the S50 merge draft we
+  // worked around this by emailing from jarrard.cole@gmail.com via the Gmail MCP instead
+  // of trusting this path. Kept here for future seasons where the owner and recipients
+  // differ. The `name` field helps avoid the self-filter when it does happen.
   MailApp.sendEmail({
     to: email,
-    subject: "You're up — Survivor 50 Merge Draft",
+    name: 'Survivor 50 Draft',
+    subject: "You're up — Survivor 50 Merge Draft (pick #" + pickNum + ")",
     htmlBody: '<div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#1a2a18;color:#fff;border-radius:12px">' +
       '<h2 style="color:#F5C842;margin:0 0 12px">🔥 You\'re on the clock!</h2>' +
       '<p>Hey ' + nextPlayerName + ',</p>' +
