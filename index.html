@@ -4260,6 +4260,36 @@ function getCastawayTotalPoints(castawayId) {
   return total;
 }
 
+// Per-episode total for a player, including merge-pick contribution from mergeStartEp
+// onward (and only for merge picks the player didn't already draft). This is the helper
+// the race chart, H2H, and any episode-by-episode UI should use.
+function getPlayerEpisodePoints(playerIdx, ep) {
+  const draft = getPlayerCastaways(playerIdx);
+  const merge = getPlayerMergePick(playerIdx);
+  const mergeStartEp = state.settings.mergeTrigger || 9;
+  let pts = 0;
+  draft.forEach(c => { pts += getCastawayEpisodePoints(c.id, ep); });
+  if (ep >= mergeStartEp) {
+    merge.forEach(c => {
+      if (!draft.find(dc => dc.id === c.id)) pts += getCastawayEpisodePoints(c.id, ep);
+    });
+  }
+  return pts;
+}
+
+// All unique castaways for a player (draft + merge), each tagged with `_pickType`.
+function getPlayerAllPicks(playerIdx) {
+  const draft = getPlayerCastaways(playerIdx);
+  const merge = getPlayerMergePick(playerIdx);
+  const seen = new Set();
+  const out = [];
+  draft.forEach(c => { seen.add(c.id); out.push(Object.assign({}, c, { _pickType: 'draft' })); });
+  merge.forEach(c => {
+    if (!seen.has(c.id)) { seen.add(c.id); out.push(Object.assign({}, c, { _pickType: 'merge' })); }
+  });
+  return out;
+}
+
 function getPlayerTotalPoints(playerIdx) {
   let total = 0;
   // Points from drafted castaways
@@ -5111,12 +5141,12 @@ function renderBumpChart() {
   if (episodesWithData.length < 2) { section.style.display = 'none'; return; }
   section.style.display = '';
 
-  // Calculate cumulative standings at each episode
+  // Calculate cumulative standings at each episode using getPlayerEpisodePoints,
+  // which includes merge-pick contribution from mergeTrigger onward.
   const playerData = state.players.map((p, pi) => {
     let cumulative = 0;
     const dataPoints = episodesWithData.map(ep => {
-      const castaways = getPlayerCastaways(pi);
-      castaways.forEach(c => { cumulative += getCastawayEpisodePoints(c.id, ep); });
+      cumulative += getPlayerEpisodePoints(pi, ep);
       return { ep, points: cumulative };
     });
     return { name: p.name, color: p.color, dataPoints };
@@ -5185,13 +5215,19 @@ function renderBumpChart() {
 function calcWinProbabilities() {
   if (!state.players.length) return [];
   const standings = state.players.map((p, i) => {
-    const castaways = getPlayerCastaways(i);
-    const active = castaways.filter(c => c.status !== 'eliminated');
+    // Active count should include unique active castaways across draft + merge picks
+    // (otherwise post-merge rosters look smaller than they really are).
+    const draftCastaways = getPlayerCastaways(i);
+    const mergePicks = getPlayerMergePick(i);
+    const seen = new Set();
+    [...draftCastaways, ...mergePicks].forEach(c => seen.add(c.id));
+    const allUnique = Array.from(seen).map(id => state.castaways[id]);
+    const active = allUnique.filter(c => c.status !== 'eliminated');
     return {
       playerIdx: i, name: p.name, color: p.color,
       points: getPlayerTotalPoints(i),
       activeCount: active.length,
-      totalCount: castaways.length
+      totalCount: allUnique.length
     };
   });
 
@@ -5757,25 +5793,26 @@ function updateH2H() {
 
   const p1Pts = getPlayerTotalPoints(p1Idx);
   const p2Pts = getPlayerTotalPoints(p2Idx);
-  const p1Cast = getPlayerCastaways(p1Idx);
-  const p2Cast = getPlayerCastaways(p2Idx);
+  // Use getPlayerAllPicks so post-merge rosters reflect merge picks too.
+  const p1Cast = getPlayerAllPicks(p1Idx);
+  const p2Cast = getPlayerAllPicks(p2Idx);
   const p1Active = p1Cast.filter(c => c.status === 'active').length;
   const p2Active = p2Cast.filter(c => c.status === 'active').length;
 
-  // Shared castaways
+  // Shared castaways (across draft and merge)
   const shared = p1Cast.filter(c => p2Cast.find(c2 => c2.id === c.id));
 
   // Best performer per team
   const p1Best = p1Cast.reduce((best, c) => getCastawayTotalPoints(c.id) > getCastawayTotalPoints(best.id) ? c : best, p1Cast[0]);
   const p2Best = p2Cast.reduce((best, c) => getCastawayTotalPoints(c.id) > getCastawayTotalPoints(best.id) ? c : best, p2Cast[0]);
 
-  // Episodes won (who scored more that week)
+  // Episodes won (who scored more that week) — uses player-level helper so merge
+  // contribution is included from mergeTrigger onward.
   let p1Wins = 0, p2Wins = 0, ties = 0;
   for (let ep = state.settings.scoringStartEp; ep <= 20; ep++) {
     if (!state.episodes[ep] || !Object.keys(state.episodes[ep]).length) continue;
-    let pts1 = 0, pts2 = 0;
-    p1Cast.forEach(c => { pts1 += getCastawayEpisodePoints(c.id, ep); });
-    p2Cast.forEach(c => { pts2 += getCastawayEpisodePoints(c.id, ep); });
+    const pts1 = getPlayerEpisodePoints(p1Idx, ep);
+    const pts2 = getPlayerEpisodePoints(p2Idx, ep);
     if (pts1 > pts2) p1Wins++;
     else if (pts2 > pts1) p2Wins++;
     else ties++;
